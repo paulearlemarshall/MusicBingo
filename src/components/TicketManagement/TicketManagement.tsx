@@ -114,9 +114,9 @@ export const TicketManagement: React.FC = () => {
     const handleLogoSelect = async () => {
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('dialog:openFile');
-            if (result && result.length > 0) {
-                setLogo(result[0]);
+            const result = await window.ipcRenderer.invoke('dialog:openImage');
+            if (result) {
+                setLogo(result);
             }
         } catch (e) {
             console.error(e);

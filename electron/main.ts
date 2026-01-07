@@ -106,6 +106,25 @@ function registerIpcHandlers() {
             }
         },
         {
+            name: 'dialog:openImage',
+            handler: async () => {
+                console.log("[IPC] dialog:openImage CALLED");
+                try {
+                    const { canceled, filePaths } = await dialog.showOpenDialog({
+                        properties: ['openFile'],
+                        filters: [
+                            { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg'] },
+                            { name: 'All Files', extensions: ['*'] }
+                        ]
+                    })
+                    return canceled ? null : filePaths[0];
+                } catch (e) {
+                    console.error("[IPC] dialog:openImage ERROR:", e);
+                    throw e;
+                }
+            }
+        },
+        {
             name: 'dialog:openFolder',
             handler: async () => {
                 console.log("[IPC] dialog:openFolder CALLED");
