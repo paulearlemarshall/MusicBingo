@@ -42,43 +42,62 @@ export class PDFGenerator {
             const bottomTicket = ticketsArray[i + 1];
 
             // A4 Height = 297mm. Half = 148.5mm.
-            // Ticket 1: Y=10
-            this.drawTicket(doc, topTicket, config, 10, 10);
+            // Top ticket: halfStartY = 0
+            this.drawTicket(doc, topTicket, config, 0);
 
             if (bottomTicket) {
-                // Cut line at ~148mm
+                // Cut line at exactly 148.5mm (page midpoint)
                 doc.setDrawColor(200);
-                doc.line(10, 148, 200, 148);
+                doc.setLineDash([5, 3]); // Dashed line for cutting guide
+                doc.line(0, 148.5, 210, 148.5);
+                doc.setLineDash([]); // Reset to solid line
 
-                // Ticket 2: Y=158 (leaving 10mm padding from cut line)
-                this.drawTicket(doc, bottomTicket, config, 10, 158);
+                // Bottom ticket: halfStartY = 148.5
+                this.drawTicket(doc, bottomTicket, config, 148.5);
             }
         }
 
         doc.save('bingo-tickets.pdf');
     }
 
-    private static drawTicket(doc: any, ticket: BingoTicket, config: PDFConfig, _x: number, y: number) {
-        // A4 dimensions and margins
+    private static drawTicket(doc: any, ticket: BingoTicket, config: PDFConfig, halfStartY: number) {
+        // A4 dimensions and constants
         const pageWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const halfHeight = 148.5; // Half page height
         const leftMargin = 10;
         const rightMargin = 10;
-        const contentWidth = pageWidth - leftMargin - rightMargin;
 
-        // Header
+        // Header - Fixed at top of half
+        const headerY = halfStartY + 10;
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text(config.headerText, pageWidth / 2, y + 10, { align: "center" });
+        doc.text(config.headerText, pageWidth / 2, headerY, { align: "center" });
 
-        // Grid - calculate dimensions for uniform spacing
+        // Footer - Fixed at bottom of half
+        const footerY = halfStartY + halfHeight - 10;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(config.footerText, pageWidth / 2, footerY, { align: "center" });
+
+        // Grid dimensions - Fixed width, variable height based on grid size
+        const gridSize = ticket.grid.length; // 3, 4, or 5
+        const cellHeight = 16; // Fixed height for uniform vertical spacing
+        const gridWidth = 160; // Fixed width for all grid sizes
+        const gridHeight = gridSize * cellHeight;
+        const columnWidth = gridWidth / gridSize; // Uniform column width
+
+        // Center grid vertically between header and footer
+        const verticalSpace = footerY - headerY - 10; // Available space minus padding
+        const gridStartY = headerY + 5 + (verticalSpace - gridHeight) / 2;
+
+        // Center grid horizontally
+        const gridStartX = (pageWidth - gridWidth) / 2; // = (210 - 160) / 2 = 25mm
+
+        // Prepare grid data
         const body = ticket.grid.map(row =>
             row.map(cell => `${cell.song.artist}\n${cell.song.title}`)
         );
-
-        const gridSize = ticket.grid.length; // 3, 4, or 5
-        const cellHeight = 16; // Fixed height for uniform vertical spacing
-        const tableWidth = contentWidth - 10; // Leave small padding from edges
-        const columnWidth = tableWidth / gridSize; // Uniform column width
 
         // Create columnStyles object with uniform widths for all columns
         const columnStyles: any = {};
@@ -86,12 +105,13 @@ export class PDFGenerator {
             columnStyles[i] = { cellWidth: columnWidth };
         }
 
-        const tableResult = autoTable(doc, {
-            startY: y + 15,
-            margin: { left: leftMargin + 5, right: rightMargin + 5 },
+        // Draw grid using autoTable with precise positioning
+        autoTable(doc, {
+            startY: gridStartY,
+            margin: { left: gridStartX, right: gridStartX },
             body: body,
             theme: 'grid',
-            tableWidth: tableWidth,
+            tableWidth: gridWidth,
             columnStyles: columnStyles,
             styles: {
                 fontSize: 9,
@@ -150,18 +170,8 @@ export class PDFGenerator {
             }
         });
 
-        // Get the final Y position after table (from autoTable result)
-        //@ts-ignore
-        const tableEndY = doc.lastAutoTable.finalY || (y + 15 + (gridSize * cellHeight));
-        const footerY = tableEndY + 8; // Small gap after table
-
-        // Footer
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(config.footerText, pageWidth / 2, footerY, { align: "center" });
-
-        // Ticket Number Circle (Left Side)
-        const circleX = 25;
+        // Ticket Number Circle - Bottom-left, aligned with footer
+        const circleX = 20;
         const circleY = footerY;
         const radius = 8;
 
@@ -169,23 +179,20 @@ export class PDFGenerator {
         doc.setLineWidth(0.5);
         doc.circle(circleX, circleY, radius, 'S');
 
-        doc.setFontSize(14); // Larger font
+        doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        // Using common hack for vertical alignment since baseline support varies
         doc.text(ticket.id, circleX, circleY + 1.5, { align: "center" });
 
-        // Logo - Anchored to bottom-right of non-margin space
+        // Logo - Bottom-right corner of half
         if (config.logoUrl) {
             try {
                 const logoWidth = 20;
                 const logoHeight = 20;
-                const ticketBottomY = footerY + 5; // Bottom of ticket area
-                const ticketRightX = pageWidth - rightMargin;
 
-                // Position logo so its bottom-right corner aligns with ticket's bottom-right
+                // Position logo so its bottom-right corner aligns with half's bottom-right
                 // jsPDF addImage uses top-left corner, so we subtract dimensions
-                const logoX = ticketRightX - logoWidth;
-                const logoY = ticketBottomY - logoHeight;
+                const logoX = pageWidth - rightMargin - logoWidth;
+                const logoY = halfStartY + halfHeight - rightMargin - logoHeight;
 
                 doc.addImage(config.logoUrl, 'PNG', logoX, logoY, logoWidth, logoHeight);
             } catch (e) {
