@@ -17,15 +17,6 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     } = useGame();
 
     const allSelected = songs.length > 0 && selectedSongIds.size === songs.length;
-    const someSelected = selectedSongIds.size > 0 && selectedSongIds.size < songs.length;
-
-    const handleToggleAll = () => {
-        if (allSelected || someSelected) {
-            deselectAllSongs();
-        } else {
-            selectAllSongs();
-        }
-    };
 
     const processPaths = (paths: string[]) => {
         const newSongs = paths.map((path: string) => {
@@ -107,13 +98,33 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
 
             <Card>
                 <div className="flex justify-between items-center mb-6">
-                    <div className="text-slate-400">
-                        {songs.length} songs in library
-                        {selectedSongIds.size > 0 && (
-                            <span className="ml-4 text-emerald-400 font-semibold">
-                                {selectedSongIds.size} selected
-                            </span>
-                        )}
+                    <div className="flex items-center gap-4">
+                        <div className="text-slate-400">
+                            {songs.length} songs in library
+                            {selectedSongIds.size > 0 && (
+                                <span className="ml-4 text-emerald-400 font-semibold">
+                                    {selectedSongIds.size} selected
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                variant={allSelected ? "secondary" : "primary"}
+                                size="sm"
+                                onClick={selectAllSongs}
+                                disabled={songs.length === 0}
+                            >
+                                Select All
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={deselectAllSongs}
+                                disabled={selectedSongIds.size === 0}
+                            >
+                                Unselect All
+                            </Button>
+                        </div>
                     </div>
                     <div className="space-x-4">
                         <Button variant="secondary" onClick={handleGenerateDummy}>Debug: Gen 60 Dummy Songs</Button>
@@ -128,49 +139,43 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
                     <table className="w-full text-left text-slate-300">
                         <thead className="text-xs uppercase bg-slate-700/50 text-slate-400">
                             <tr>
-                                <th className="px-4 py-3 w-12">
-                                    <input
-                                        type="checkbox"
-                                        checked={allSelected}
-                                        ref={input => {
-                                            if (input) input.indeterminate = someSelected;
-                                        }}
-                                        onChange={handleToggleAll}
-                                        className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
-                                    />
-                                </th>
                                 <th className="px-6 py-3">Artist</th>
                                 <th className="px-6 py-3">Title</th>
                                 <th className="px-6 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50">
-                            {songs.map(song => (
-                                <tr key={song.id} className="hover:bg-slate-700/30">
-                                    <td className="px-4 py-4">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedSongIds.has(song.id)}
-                                            onChange={() => toggleSongSelection(song.id)}
-                                            className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
-                                        />
-                                    </td>
-                                    <td className="px-6 py-4 font-medium text-white">{song.artist}</td>
-                                    <td className="px-6 py-4">{song.title}</td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => removeSong(song.id)}
-                                            className="text-red-400 hover:text-red-300 text-sm font-semibold"
-                                        >
-                                            Remove
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                            {songs.map(song => {
+                                const isSelected = selectedSongIds.has(song.id);
+                                return (
+                                    <tr key={song.id} className="hover:bg-slate-700/30">
+                                        <td className="px-6 py-4 font-medium text-white">{song.artist}</td>
+                                        <td className="px-6 py-4">{song.title}</td>
+                                        <td className="px-6 py-4 text-right space-x-3">
+                                            <button
+                                                onClick={() => toggleSongSelection(song.id)}
+                                                className={`text-sm font-semibold px-3 py-1 rounded ${
+                                                    isSelected
+                                                        ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                                                        : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                                                }`}
+                                            >
+                                                {isSelected ? 'Selected' : 'Unselected'}
+                                            </button>
+                                            <button
+                                                onClick={() => removeSong(song.id)}
+                                                className="text-red-400 hover:text-red-300 text-sm font-semibold"
+                                            >
+                                                Remove
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             {songs.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                                        No songs in library. Click "Add Songs" to get started.
+                                    <td colSpan={3} className="px-6 py-12 text-center text-slate-500">
+                                        No songs in library. Click "Import Folder" to get started.
                                     </td>
                                 </tr>
                             )}
