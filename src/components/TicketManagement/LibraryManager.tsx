@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useGame } from '../../context/GameContext';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -12,6 +12,12 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
         clearLibrary,
         selectedSongIds
     } = useGame();
+
+    // Only count selected song IDs that actually exist in current library
+    const validSelectedCount = useMemo(() => {
+        const songIds = new Set(songs.map(s => s.id));
+        return Array.from(selectedSongIds).filter(id => songIds.has(id)).length;
+    }, [selectedSongIds, songs]);
 
     const processPaths = (paths: string[]) => {
         const newSongs = paths.map((path: string) => {
@@ -95,9 +101,9 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
                 <div className="flex justify-between items-center mb-6">
                     <div className="text-slate-400">
                         {songs.length} songs in library
-                        {selectedSongIds.size > 0 && (
+                        {validSelectedCount > 0 && (
                             <span className="ml-4 text-emerald-400 font-semibold">
-                                ({selectedSongIds.size} selected for ticket generation)
+                                ({validSelectedCount} selected for ticket generation)
                             </span>
                         )}
                     </div>

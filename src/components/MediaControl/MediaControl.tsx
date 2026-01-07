@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../context/GameContext';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -184,7 +184,13 @@ export const MediaControl: React.FC = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [editingSong, setEditingSong] = useState<Song | null>(null);
 
-    const allSelected = songs.length > 0 && selectedSongIds.size === songs.length;
+    // Only count selected song IDs that actually exist in current library
+    const validSelectedCount = useMemo(() => {
+        const songIds = new Set(songs.map(s => s.id));
+        return Array.from(selectedSongIds).filter(id => songIds.has(id)).length;
+    }, [selectedSongIds, songs]);
+
+    const allSelected = songs.length > 0 && validSelectedCount === songs.length;
 
     const handleClearLibrary = () => {
         if (confirm("Are you sure you want to clear the entire library? This will also reset the active folder and any generated tickets.")) {
@@ -380,9 +386,9 @@ export const MediaControl: React.FC = () => {
                         <div>
                             <div className="text-slate-400 font-medium mb-1">
                                 {songs.length} songs in library
-                                {selectedSongIds.size > 0 && (
+                                {validSelectedCount > 0 && (
                                     <span className="ml-4 text-emerald-400 font-semibold">
-                                        {selectedSongIds.size} selected
+                                        {validSelectedCount} selected
                                     </span>
                                 )}
                             </div>

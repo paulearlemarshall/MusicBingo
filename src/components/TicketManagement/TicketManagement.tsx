@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../context/GameContext';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -41,7 +41,14 @@ export const TicketManagement: React.FC = () => {
     const [presetNameInput, setPresetNameInput] = useState('');
 
     const requiredSongs = gridSize * gridSize;
-    const songsForGeneration = selectedSongIds.size > 0 ? selectedSongIds.size : songs.length;
+
+    // Only count selected song IDs that actually exist in current library
+    const validSelectedSongIds = useMemo(() => {
+        const songIds = new Set(songs.map(s => s.id));
+        return Array.from(selectedSongIds).filter(id => songIds.has(id));
+    }, [selectedSongIds, songs]);
+
+    const songsForGeneration = validSelectedSongIds.length > 0 ? validSelectedSongIds.length : songs.length;
     const safeMax = BingoGameLogic.calculateSafeMax(songsForGeneration, gridSize);
 
     // Validation for saving presets
@@ -319,7 +326,7 @@ export const TicketManagement: React.FC = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-slate-400">Selected Songs:</span>
-                                    <span className="text-white">{selectedSongIds.size} of {songs.length}</span>
+                                    <span className="text-white">{validSelectedSongIds.length} of {songs.length}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-slate-400">Grid Size:</span>
@@ -345,7 +352,7 @@ export const TicketManagement: React.FC = () => {
                         </div>
                     )}
 
-                    {!activePreset && selectedSongIds.size === 0 && canSavePreset && (
+                    {!activePreset && validSelectedSongIds.length === 0 && canSavePreset && (
                         <div className="text-sm text-slate-400 p-3 bg-slate-800/30 rounded">
                             💡 Tip: Select songs in Media Control, generate tickets, then save as a preset.
                         </div>
@@ -440,7 +447,7 @@ export const TicketManagement: React.FC = () => {
                                     />
                                     <div className="flex-1 min-w-[300px] px-4 py-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
                                         <p className="text-sm text-slate-300 leading-relaxed">
-                                            For <span className="text-pink-400 font-bold">{songsForGeneration}</span> {selectedSongIds.size > 0 ? 'songs selected' : 'songs'} (from {songs.length} in library), max <span className="text-pink-400 font-bold">{safeMax.toLocaleString()}</span> unique tickets can be produced for a <span className="text-pink-400 font-bold">{gridSize}x{gridSize}</span> grid ({requiredSongs} songs/ticket).
+                                            For <span className="text-pink-400 font-bold">{songsForGeneration}</span> {validSelectedSongIds.length > 0 ? 'songs selected' : 'songs'} (from {songs.length} in library), max <span className="text-pink-400 font-bold">{safeMax.toLocaleString()}</span> unique tickets can be produced for a <span className="text-pink-400 font-bold">{gridSize}x{gridSize}</span> grid ({requiredSongs} songs/ticket).
                                         </p>
                                     </div>
                                     <Button
@@ -454,7 +461,7 @@ export const TicketManagement: React.FC = () => {
                                 </div>
                                 {songsForGeneration < requiredSongs && (
                                     <p className="text-sm text-amber-500 mt-2">
-                                        {selectedSongIds.size > 0
+                                        {validSelectedSongIds.length > 0
                                             ? `Select at least ${requiredSongs} songs in Media Control to generate tickets (${gridSize}x${gridSize} grid). Currently ${songsForGeneration} selected.`
                                             : `Add at least ${requiredSongs} songs to the library to generate tickets (${gridSize}x${gridSize} grid).`
                                         }
@@ -582,7 +589,7 @@ export const TicketManagement: React.FC = () => {
                             <div className="text-sm text-slate-400 p-3 bg-slate-800/50 rounded">
                                 <strong>This preset will save:</strong>
                                 <ul className="mt-2 space-y-1 ml-4 list-disc">
-                                    <li>{selectedSongIds.size} selected songs</li>
+                                    <li>{validSelectedSongIds.length} selected songs</li>
                                     <li>{tickets.size} generated tickets</li>
                                     <li>Grid size: {gridSize}x{gridSize}</li>
                                     <li>PDF settings (header, footer, logo)</li>

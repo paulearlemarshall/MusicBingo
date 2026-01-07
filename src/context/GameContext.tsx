@@ -442,6 +442,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setHistoryIndex(-1);
         setCurrentSong(null);
         setIsPlaying(false);
+        setSelectedSongIds(new Set());
+        setActivePreset(null);
+        setAvailablePresets([]);
     }, []);
 
     const clearTickets = useCallback(async (folderPath: string | null) => {
