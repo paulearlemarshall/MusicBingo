@@ -111,42 +111,6 @@ export const TicketManagement: React.FC = () => {
     }, [pdfConfig]);
 
 
-    const handleSaveSettings = async () => {
-        setPdfConfig({
-            headerText: header,
-            footerText: footer,
-            logoUrl: logo || undefined
-        });
-
-        if (activeFolder) {
-            try {
-                // @ts-ignore
-                await window.ipcRenderer.invoke('tickets:save', {
-                    folderPath: activeFolder,
-                    config: {
-                        headerText: header,
-                        footerText: footer,
-                        logoUrl: logo || ''
-                    },
-                    gridSize: gridSize
-                });
-                console.log("[TicketManagement] Saved tickets.ini");
-                if (tickets.size > 0) {
-                    const ticketsArray = Array.from(tickets.values());
-                    // @ts-ignore
-                    await window.ipcRenderer.invoke('boards:save', {
-                        folderPath: activeFolder,
-                        tickets: ticketsArray,
-                        catalog: songs // Save current songs as the game catalog
-                    });
-                    console.log("[TicketManagement] Saved boards.ini with catalog");
-                }
-            } catch (e) {
-                console.error("[TicketManagement] Failed to save tickets.ini", e);
-            }
-        }
-    };
-
     const handleLogoSelect = async () => {
         try {
             // @ts-ignore
@@ -263,18 +227,11 @@ export const TicketManagement: React.FC = () => {
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6 h-full overflow-y-auto">
-            <header className="flex justify-between items-start">
+            <header>
                 <div>
                     <h2 className="text-3xl font-bold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">Ticket Management</h2>
                     <p className="text-slate-400 mt-1">Configure customized PDF tickets and manage game generations.</p>
                 </div>
-                <Button 
-                    onClick={handleSaveSettings} 
-                    variant="primary" 
-                    className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                >
-                    💾 Save PDF and Game Board Settings
-                </Button>
             </header>
 
             {/* Preset Management Section */}
