@@ -10,6 +10,13 @@ interface GameEffects {
     link?: string;
 }
 
+interface PresetInfo {
+    name: string;
+    encodedName: string;
+    hasBoards: boolean;
+    hasTickets: boolean;
+}
+
 interface GameState {
     songs: Song[];
     gameCatalog: Song[]; // Subset of songs used for the active tickets
@@ -29,6 +36,10 @@ interface GameState {
     effects: GameEffects;
     activeFolder: string | null;
     activeEffect: keyof GameEffects | null;
+    // Preset management
+    activePreset: string | null;
+    availablePresets: PresetInfo[];
+    selectedSongIds: Set<string>;
 }
 
 interface GameContextType extends GameState {
@@ -57,6 +68,17 @@ interface GameContextType extends GameState {
     clearLibrary: () => void;
     clearTickets: (folderPath: string | null) => void;
     loadTicketsFromBoards: (boards: any[], catalog?: Song[]) => void;
+    // Preset management
+    loadPresets: (folderPath: string) => Promise<void>;
+    loadPreset: (presetName: string) => Promise<void>;
+    savePreset: (presetName: string) => Promise<boolean>;
+    deletePreset: (presetName: string) => Promise<boolean>;
+    setActivePreset: (name: string | null) => void;
+    // Song selection for presets
+    toggleSongSelection: (songId: string) => void;
+    selectAllSongs: () => void;
+    deselectAllSongs: () => void;
+    setSelectedSongIds: (ids: Set<string>) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -88,6 +110,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [effects, setEffects] = useState<GameEffects>({});
     const [activeFolder, setActiveFolder] = useState<string | null>(null);
     const [activeEffect, setActiveEffect] = useState<keyof GameEffects | null>(null);
+
+    // Preset management state
+    const [activePreset, setActivePreset] = useState<string | null>(null);
+    const [availablePresets, setAvailablePresets] = useState<PresetInfo[]>([]);
+    const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(new Set());
 
     // Automatically cue the first song when tickets are ready but no song is playing
     React.useEffect(() => {
@@ -158,9 +185,19 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const generateTickets = (count: number) => {
-        const safeMax = BingoGameLogic.calculateSafeMax(songs.length, gridSize);
+        // Use selected songs if any are selected, otherwise use all songs
+        const songsToUse = selectedSongIds.size > 0
+            ? songs.filter(s => selectedSongIds.has(s.id))
+            : songs;
+
+        if (songsToUse.length === 0) {
+            alert("No songs available for ticket generation. Please select songs or load a music folder.");
+            return;
+        }
+
+        const safeMax = BingoGameLogic.calculateSafeMax(songsToUse.length, gridSize);
         if (count > safeMax && safeMax > 0) {
-            alert(`You requested ${count} tickets, but only ${safeMax} unique tickets can be generated with the current library and grid size. Please request ${safeMax} or fewer.`);
+            alert(`You requested ${count} tickets, but only ${safeMax} unique tickets can be generated with ${songsToUse.length} selected songs and grid size ${gridSize}. Please request ${safeMax} or fewer.`);
             return;
         }
 
@@ -175,7 +212,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             while (attempts < maxAttempts) {
                 try {
                     const ticketId = (i + 1).toString();
-                    ticket = BingoGameLogic.generateTicket(songs, gridSize, ticketId);
+                    ticket = BingoGameLogic.generateTicket(songsToUse, gridSize, ticketId);
 
                     // Create a unique key for this set of songs (order independent)
                     const songIds = ticket.grid.flat().map(c => c.song.id).sort().join(',');
@@ -204,7 +241,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         }
         setTickets(newTickets);
-        setGameCatalog([...songs]); // The current songs make up the catalog for these tickets
+        setGameCatalog([...songsToUse]); // The selected songs make up the catalog for these tickets
     };
 
     // Reconstruct tickets from loaded board data
@@ -435,6 +472,142 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsPlaying(false);
     }
 
+    // Preset management functions
+    const loadPresets = useCallback(async (folderPath: string) => {
+        if (!folderPath) return;
+        try {
+            // @ts-ignore
+            const presets = await window.ipcRenderer.invoke('presets:list', folderPath);
+            setAvailablePresets(presets || []);
+            log(`[loadPresets] Found ${presets?.length || 0} presets`);
+        } catch (e) {
+            console.error("[GameContext] loadPresets ERROR:", e);
+            setAvailablePresets([]);
+        }
+    }, []);
+
+    const loadPreset = useCallback(async (presetName: string) => {
+        if (!activeFolder || !presetName) return;
+        try {
+            log(`[loadPreset] Loading preset "${presetName}"`);
+            // @ts-ignore
+            const data = await window.ipcRenderer.invoke('presets:load', { folderPath: activeFolder, presetName });
+
+            if (!data) {
+                console.error("[GameContext] loadPreset: No data returned");
+                return;
+            }
+
+            // Load the preset data into state
+            if (data.boards && data.boards.length > 0) {
+                loadTicketsFromBoards(data.boards, data.catalog);
+            }
+
+            if (data.pdfConfig) {
+                setPdfConfig(data.pdfConfig);
+            }
+
+            if (data.gridSize) {
+                setGridSize(data.gridSize);
+            }
+
+            if (data.selectedSongIds) {
+                setSelectedSongIds(new Set(data.selectedSongIds));
+            }
+
+            setActivePreset(presetName);
+            log(`[loadPreset] Successfully loaded preset "${presetName}"`);
+        } catch (e) {
+            console.error("[GameContext] loadPreset ERROR:", e);
+        }
+    }, [activeFolder, loadTicketsFromBoards]);
+
+    const savePreset = useCallback(async (presetName: string): Promise<boolean> => {
+        if (!activeFolder || !presetName) {
+            console.error("[GameContext] savePreset: Missing activeFolder or presetName");
+            return false;
+        }
+
+        try {
+            log(`[savePreset] Saving preset "${presetName}"`);
+
+            // Get selected songs for the catalog
+            const catalog = songs.filter(s => selectedSongIds.has(s.id));
+
+            // @ts-ignore
+            const success = await window.ipcRenderer.invoke('presets:save', {
+                folderPath: activeFolder,
+                presetName,
+                tickets: Array.from(tickets.values()),
+                catalog,
+                gridSize,
+                pdfConfig,
+                selectedSongIds: Array.from(selectedSongIds)
+            });
+
+            if (success) {
+                setActivePreset(presetName);
+                await loadPresets(activeFolder); // Refresh preset list
+                log(`[savePreset] Successfully saved preset "${presetName}"`);
+            }
+
+            return success;
+        } catch (e) {
+            console.error("[GameContext] savePreset ERROR:", e);
+            return false;
+        }
+    }, [activeFolder, songs, tickets, gridSize, pdfConfig, selectedSongIds, loadPresets]);
+
+    const deletePreset = useCallback(async (presetName: string): Promise<boolean> => {
+        if (!activeFolder || !presetName) {
+            console.error("[GameContext] deletePreset: Missing activeFolder or presetName");
+            return false;
+        }
+
+        try {
+            log(`[deletePreset] Deleting preset "${presetName}"`);
+            // @ts-ignore
+            const success = await window.ipcRenderer.invoke('presets:delete', { folderPath: activeFolder, presetName });
+
+            if (success) {
+                if (activePreset === presetName) {
+                    setActivePreset(null);
+                    setTickets(new Map());
+                    setGameCatalog([]);
+                    setSelectedSongIds(new Set());
+                }
+                await loadPresets(activeFolder); // Refresh preset list
+                log(`[deletePreset] Successfully deleted preset "${presetName}"`);
+            }
+
+            return success;
+        } catch (e) {
+            console.error("[GameContext] deletePreset ERROR:", e);
+            return false;
+        }
+    }, [activeFolder, activePreset, loadPresets]);
+
+    // Song selection functions for presets
+    const toggleSongSelection = useCallback((songId: string) => {
+        setSelectedSongIds(prev => {
+            const updated = new Set(prev);
+            if (updated.has(songId)) {
+                updated.delete(songId);
+            } else {
+                updated.add(songId);
+            }
+            return updated;
+        });
+    }, []);
+
+    const selectAllSongs = useCallback(() => {
+        setSelectedSongIds(new Set(songs.map(s => s.id)));
+    }, [songs]);
+
+    const deselectAllSongs = useCallback(() => {
+        setSelectedSongIds(new Set());
+    }, []);
+
     return (
         <GameContext.Provider value={{
             songs,
@@ -454,6 +627,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             effects,
             activeFolder,
             activeEffect,
+            activePreset,
+            availablePresets,
+            selectedSongIds,
             addSongs,
             removeSong,
             updateSong,
@@ -477,7 +653,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setActiveFolder,
             clearLibrary,
             clearTickets,
-            loadTicketsFromBoards
+            loadTicketsFromBoards,
+            loadPresets,
+            loadPreset,
+            savePreset,
+            deletePreset,
+            setActivePreset,
+            toggleSongSelection,
+            selectAllSongs,
+            deselectAllSongs,
+            setSelectedSongIds
         }}>
             {children}
         </GameContext.Provider>

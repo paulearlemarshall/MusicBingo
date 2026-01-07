@@ -70,6 +70,20 @@ async function withLock(filePath: string, fn: () => Promise<any>) {
     }
 }
 
+// Preset name encoding/decoding utilities
+function encodePresetName(name: string): string {
+    return encodeURIComponent(name.toLowerCase().trim());
+}
+
+function decodePresetName(encoded: string): string {
+    try {
+        return decodeURIComponent(encoded);
+    } catch (e) {
+        console.error("[Main] Failed to decode preset name:", encoded, e);
+        return encoded;
+    }
+}
+
 function registerIpcHandlers() {
     console.log("[Main] Starting IPC Handler Registration...");
     ipcRegistrationComplete = false;
@@ -402,6 +416,258 @@ function registerIpcHandlers() {
                     return success;
                 } catch (e) {
                     console.error("[IPC] tags:save ERROR:", e);
+                    return false;
+                }
+            }
+        },
+        {
+            name: 'presets:list',
+            handler: async (_event: any, folderPath: string) => {
+                console.log(`[IPC] presets:list CALLED for ${folderPath}`);
+                if (!folderPath || !fs.existsSync(folderPath)) return [];
+
+                try {
+                    const files = fs.readdirSync(folderPath);
+                    const presetNames = new Set<string>();
+
+                    // Find all boards_*.ini and tickets_*.ini files
+                    for (const file of files) {
+                        const boardsMatch = file.match(/^boards_(.+)\.ini$/);
+                        const ticketsMatch = file.match(/^tickets_(.+)\.ini$/);
+
+                        if (boardsMatch) {
+                            presetNames.add(boardsMatch[1]);
+                        } else if (ticketsMatch) {
+                            presetNames.add(ticketsMatch[1]);
+                        }
+                    }
+
+                    // Build preset info array
+                    const presets = Array.from(presetNames).map(encodedName => {
+                        const boardsPath = path.join(folderPath, `boards_${encodedName}.ini`);
+                        const ticketsPath = path.join(folderPath, `tickets_${encodedName}.ini`);
+
+                        return {
+                            name: decodePresetName(encodedName),
+                            encodedName: encodedName,
+                            hasBoards: fs.existsSync(boardsPath),
+                            hasTickets: fs.existsSync(ticketsPath)
+                        };
+                    });
+
+                    console.log(`[IPC] presets:list FOUND ${presets.length} presets`);
+                    return presets;
+                } catch (e) {
+                    console.error("[IPC] presets:list ERROR:", e);
+                    return [];
+                }
+            }
+        },
+        {
+            name: 'presets:save',
+            handler: async (_event: any, args: any) => {
+                const { folderPath, presetName, tickets, catalog, gridSize, pdfConfig, selectedSongIds } = args || {};
+                console.log(`[IPC] presets:save CALLED for preset "${presetName}" in ${folderPath}`);
+
+                if (!folderPath || !presetName) {
+                    console.error("[IPC] presets:save ERROR: Missing folderPath or presetName");
+                    return false;
+                }
+
+                const encodedName = encodePresetName(presetName);
+                const boardsPath = path.join(folderPath, `boards_${encodedName}.ini`);
+                const ticketsPath = path.join(folderPath, `tickets_${encodedName}.ini`);
+
+                try {
+                    // Save boards file with catalog and ticket data
+                    let boardsContent = `; Generated Bingo Boards and Catalog for Preset: ${presetName}\n\n`;
+
+                    if (catalog && Array.isArray(catalog)) {
+                        boardsContent += "[catalog]\n";
+                        catalog.forEach((song: any) => {
+                            boardsContent += `${song.id}=${song.artist}|${song.title}\n`;
+                        });
+                        boardsContent += "\n";
+                    }
+
+                    if (tickets && Array.isArray(tickets)) {
+                        tickets.forEach((ticket: any) => {
+                            boardsContent += `[${ticket.id}]\n`;
+                            ticket.grid.forEach((row: any[], rowIndex: number) => {
+                                row.forEach((cell: any, colIndex: number) => {
+                                    if (cell && cell.song) {
+                                        boardsContent += `${rowIndex},${colIndex}=${cell.song.id}\n`;
+                                    }
+                                });
+                            });
+                            boardsContent += "\n";
+                        });
+                    }
+
+                    fs.writeFileSync(boardsPath, boardsContent, 'utf-8');
+                    console.log(`[IPC] presets:save SUCCESS: Wrote ${boardsPath}`);
+
+                    // Save tickets file with PDF config and selected songs
+                    let ticketsContent = `; Ticket Configuration for Preset: ${presetName}\n\n`;
+                    ticketsContent += "[settings]\n";
+                    ticketsContent += `header=${pdfConfig?.headerText || ''}\n`;
+                    ticketsContent += `footer=${pdfConfig?.footerText || ''}\n`;
+                    ticketsContent += `logo=${pdfConfig?.logoUrl || ''}\n`;
+                    ticketsContent += `gridSize=${gridSize || 5}\n\n`;
+
+                    if (selectedSongIds && Array.isArray(selectedSongIds)) {
+                        ticketsContent += "[selectedSongs]\n";
+                        selectedSongIds.forEach((id: string) => {
+                            ticketsContent += `${id}\n`;
+                        });
+                    }
+
+                    fs.writeFileSync(ticketsPath, ticketsContent, 'utf-8');
+                    console.log(`[IPC] presets:save SUCCESS: Wrote ${ticketsPath}`);
+
+                    return true;
+                } catch (e) {
+                    console.error("[IPC] presets:save ERROR:", e);
+                    return false;
+                }
+            }
+        },
+        {
+            name: 'presets:load',
+            handler: async (_event: any, args: any) => {
+                const { folderPath, presetName } = args || {};
+                console.log(`[IPC] presets:load CALLED for preset "${presetName}" in ${folderPath}`);
+
+                if (!folderPath || !presetName) {
+                    console.error("[IPC] presets:load ERROR: Missing folderPath or presetName");
+                    return null;
+                }
+
+                const encodedName = encodePresetName(presetName);
+                const boardsPath = path.join(folderPath, `boards_${encodedName}.ini`);
+                const ticketsPath = path.join(folderPath, `tickets_${encodedName}.ini`);
+
+                try {
+                    const result: any = {
+                        boards: [],
+                        catalog: [],
+                        pdfConfig: {},
+                        gridSize: 5,
+                        selectedSongIds: []
+                    };
+
+                    // Load boards file
+                    if (fs.existsSync(boardsPath)) {
+                        const boardsContent = fs.readFileSync(boardsPath, 'utf-8');
+                        const lines = boardsContent.split(/\r?\n/);
+                        let currentBoard: any = null;
+                        let inCatalog = false;
+
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (!trimmed || trimmed.startsWith(';')) continue;
+
+                            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                                const section = trimmed.slice(1, -1);
+                                if (section === 'catalog') {
+                                    inCatalog = true;
+                                    currentBoard = null;
+                                } else {
+                                    inCatalog = false;
+                                    if (currentBoard) result.boards.push(currentBoard);
+                                    currentBoard = { id: section, cells: [] };
+                                }
+                                continue;
+                            }
+
+                            if (inCatalog) {
+                                const [id, meta] = trimmed.split('=');
+                                const [artist, title] = (meta || '').split('|');
+                                result.catalog.push({ id, artist, title, filePath: id });
+                            } else if (currentBoard) {
+                                const [pos, songId] = trimmed.split('=').map(s => s.trim());
+                                const [row, col] = pos.split(',').map(n => parseInt(n));
+                                currentBoard.cells.push({ row, col, songId });
+                            }
+                        }
+                        if (currentBoard) result.boards.push(currentBoard);
+                    }
+
+                    // Load tickets file
+                    if (fs.existsSync(ticketsPath)) {
+                        const ticketsContent = fs.readFileSync(ticketsPath, 'utf-8');
+                        const lines = ticketsContent.split(/\r?\n/);
+                        let currentSection = '';
+
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (!trimmed || trimmed.startsWith(';')) continue;
+
+                            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                                currentSection = trimmed.slice(1, -1);
+                                continue;
+                            }
+
+                            if (currentSection === 'settings') {
+                                const [key, ...valParts] = trimmed.split('=');
+                                const val = valParts.join('=').trim();
+                                if (key === 'header') result.pdfConfig.headerText = val;
+                                if (key === 'footer') result.pdfConfig.footerText = val;
+                                if (key === 'logo') result.pdfConfig.logoUrl = val;
+                                if (key === 'gridSize') result.gridSize = parseInt(val);
+                            } else if (currentSection === 'selectedSongs') {
+                                if (trimmed) result.selectedSongIds.push(trimmed);
+                            }
+                        }
+                    }
+
+                    console.log(`[IPC] presets:load SUCCESS: Loaded ${result.boards.length} boards, ${result.catalog.length} catalog songs, ${result.selectedSongIds.length} selected songs`);
+                    return result;
+                } catch (e) {
+                    console.error("[IPC] presets:load ERROR:", e);
+                    return null;
+                }
+            }
+        },
+        {
+            name: 'presets:delete',
+            handler: async (_event: any, args: any) => {
+                const { folderPath, presetName } = args || {};
+                console.log(`[IPC] presets:delete CALLED for preset "${presetName}" in ${folderPath}`);
+
+                if (!folderPath || !presetName) {
+                    console.error("[IPC] presets:delete ERROR: Missing folderPath or presetName");
+                    return false;
+                }
+
+                const encodedName = encodePresetName(presetName);
+                const boardsPath = path.join(folderPath, `boards_${encodedName}.ini`);
+                const ticketsPath = path.join(folderPath, `tickets_${encodedName}.ini`);
+
+                try {
+                    let deleted = false;
+
+                    if (fs.existsSync(boardsPath)) {
+                        fs.unlinkSync(boardsPath);
+                        console.log(`[IPC] presets:delete: Deleted ${boardsPath}`);
+                        deleted = true;
+                    }
+
+                    if (fs.existsSync(ticketsPath)) {
+                        fs.unlinkSync(ticketsPath);
+                        console.log(`[IPC] presets:delete: Deleted ${ticketsPath}`);
+                        deleted = true;
+                    }
+
+                    if (deleted) {
+                        console.log(`[IPC] presets:delete SUCCESS`);
+                        return true;
+                    } else {
+                        console.log(`[IPC] presets:delete: No files found to delete`);
+                        return false;
+                    }
+                } catch (e) {
+                    console.error("[IPC] presets:delete ERROR:", e);
                     return false;
                 }
             }
