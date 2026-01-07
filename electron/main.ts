@@ -140,6 +140,43 @@ function registerIpcHandlers() {
             }
         },
         {
+            name: 'file:readImageAsDataUrl',
+            handler: async (_event: any, filePath: string) => {
+                console.log(`[IPC] file:readImageAsDataUrl CALLED for ${filePath}`);
+                try {
+                    if (!filePath || !fs.existsSync(filePath)) {
+                        console.error(`[IPC] file:readImageAsDataUrl ERROR: File not found ${filePath}`);
+                        return null;
+                    }
+
+                    // Read file as base64
+                    const imageBuffer = fs.readFileSync(filePath);
+                    const base64 = imageBuffer.toString('base64');
+
+                    // Determine MIME type from extension
+                    const ext = path.extname(filePath).toLowerCase();
+                    const mimeTypes: { [key: string]: string } = {
+                        '.png': 'image/png',
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.gif': 'image/gif',
+                        '.bmp': 'image/bmp',
+                        '.webp': 'image/webp',
+                        '.svg': 'image/svg+xml'
+                    };
+                    const mimeType = mimeTypes[ext] || 'image/png';
+
+                    // Return data URL
+                    const dataUrl = `data:${mimeType};base64,${base64}`;
+                    console.log(`[IPC] file:readImageAsDataUrl SUCCESS: Converted to ${mimeType} data URL`);
+                    return dataUrl;
+                } catch (e) {
+                    console.error(`[IPC] file:readImageAsDataUrl ERROR:`, e);
+                    return null;
+                }
+            }
+        },
+        {
             name: 'library:scanFolder',
             handler: async (_event: any, folderPath: string) => {
                 console.log(`[IPC] library:scanFolder CALLED for ${folderPath}`);

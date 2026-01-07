@@ -127,9 +127,30 @@ export const TicketManagement: React.FC = () => {
         generateTickets(ticketCountToGen);
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         if (tickets.size === 0) return;
-        PDFGenerator.generateTicketsPDF(Array.from(tickets.values()), pdfConfig);
+
+        // Convert logo file path to data URL if it exists
+        let logoDataUrl = pdfConfig.logoUrl;
+        if (pdfConfig.logoUrl && !pdfConfig.logoUrl.startsWith('data:')) {
+            try {
+                // @ts-ignore
+                logoDataUrl = await window.ipcRenderer.invoke('file:readImageAsDataUrl', pdfConfig.logoUrl);
+                if (!logoDataUrl) {
+                    console.warn('Failed to convert logo to data URL, generating PDF without logo');
+                    logoDataUrl = undefined;
+                }
+            } catch (e) {
+                console.error('Error converting logo to data URL:', e);
+                logoDataUrl = undefined;
+            }
+        }
+
+        // Generate PDF with data URL logo
+        PDFGenerator.generateTicketsPDF(Array.from(tickets.values()), {
+            ...pdfConfig,
+            logoUrl: logoDataUrl
+        });
     };
 
     // Load presets when folder changes

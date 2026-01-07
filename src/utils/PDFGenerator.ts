@@ -194,7 +194,18 @@ export class PDFGenerator {
                 const logoX = pageWidth - rightMargin - logoWidth;
                 const logoY = halfStartY + halfHeight - rightMargin - logoHeight;
 
-                doc.addImage(config.logoUrl, 'PNG', logoX, logoY, logoWidth, logoHeight);
+                // Detect image format from data URL or extension
+                let format = 'PNG';
+                if (config.logoUrl.startsWith('data:')) {
+                    // Extract MIME type from data URL (e.g., "data:image/jpeg;base64,...")
+                    const mimeMatch = config.logoUrl.match(/^data:image\/(\w+);/);
+                    if (mimeMatch) {
+                        format = mimeMatch[1].toUpperCase();
+                        if (format === 'JPG') format = 'JPEG'; // jsPDF uses 'JPEG' not 'JPG'
+                    }
+                }
+
+                doc.addImage(config.logoUrl, format, logoX, logoY, logoWidth, logoHeight);
             } catch (e) {
                 console.warn("Failed to add logo", e);
             }
