@@ -590,6 +590,36 @@ git stash pop           # Restore stashed changes
 - [GitHub Desktop](https://desktop.github.com/) - GUI if you prefer visual tools
 - `git help <command>` - Built-in help
 
+### Git Aliases (Shortcuts Configured for This Project)
+
+This project has custom git aliases set up to make common operations faster. See `GIT_COMMANDS.md` for the complete reference.
+
+**Most Useful Shortcuts:**
+```bash
+git st              # Status (what changed?)
+git lg              # Visual history graph
+git cm "message"    # Quick commit
+git aa              # Add all files
+git save            # Quick WIP save point
+git undo            # Undo last commit (keep changes)
+git sync            # Pull and push in one command
+```
+
+**Example workflow:**
+```bash
+git st              # Check status
+git aa              # Stage everything
+git cm "Add volume slider to media controls"
+git push            # Push to GitHub
+```
+
+**View all aliases:**
+```bash
+git config --get-regexp alias
+```
+
+**See also:** `GIT_COMMANDS.md` for detailed workflows and examples
+
 ## Common Tasks
 
 ### Adding a New Effect Sound
