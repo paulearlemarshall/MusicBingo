@@ -329,10 +329,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Initialize game by loading first song WITHOUT auto-playing
     const initializeGame = () => {
-        log(`initializeGame called. Loading first song without auto-play.`);
+        log(`[DEBUG initializeGame] Called - current state: playedSongs.size=${playedSongs.size}, historyIndex=${historyIndex}, currentSong=${currentSong ? 'EXISTS' : 'NULL'}`);
 
         const catalogToUse = gameCatalog.length > 0 ? gameCatalog : songs;
+        log(`[DEBUG initializeGame] Catalog: gameCatalog.length=${gameCatalog.length}, songs.length=${songs.length}, using catalog size: ${catalogToUse.length}`);
+
         const unplayed = catalogToUse.filter(s => !playedSongs.has(s.id));
+        log(`[DEBUG initializeGame] Unplayed songs: ${unplayed.length}`);
 
         if (unplayed.length === 0) {
             log("[WARN] initializeGame: No songs available!");
@@ -340,22 +343,26 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         const firstSong = unplayed[Math.floor(Math.random() * unplayed.length)];
+        log(`[DEBUG initializeGame] Selected random song: "${firstSong.title}"`);
 
         // Sync with latest library metadata (cues, etc)
         const libMatch = songs.find(s => s.id === firstSong.id || s.filePath.toLowerCase().replace(/\\/g, '/') === firstSong.filePath.toLowerCase().replace(/\\/g, '/'));
         const next = libMatch ? { ...firstSong, startTime: libMatch.startTime, endTime: libMatch.endTime, duration: libMatch.duration } : firstSong;
 
-        log(`initializeGame: Loaded song: "${next.title}" (NOT auto-playing)`);
+        log(`[DEBUG initializeGame] About to set state - currentSong: "${next.title}", isPlaying: false`);
 
         setCurrentSong(next);
         setPlayedSongs(prev => {
             const nextSet = new Set(prev);
             nextSet.add(next.id);
+            log(`[DEBUG initializeGame] Updated playedSongs size: ${nextSet.size}`);
             return nextSet;
         });
         setSongHistory([next.id]);
         setHistoryIndex(0);
         setIsPlaying(false); // Keep paused until user clicks "Start Game"
+
+        log(`[DEBUG initializeGame] State set complete - song loaded but NOT playing`);
     };
 
     const playNext = () => {
@@ -534,11 +541,13 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             // Reset game state when loading preset (show placeholder in Game Control)
+            log(`[DEBUG loadPreset] Resetting game state - setting currentSong to NULL`);
             setCurrentSong(null);
             setIsPlaying(false);
             setPlayedSongs(new Set());
             setSongHistory([]);
             setHistoryIndex(-1);
+            log(`[DEBUG loadPreset] Game state reset complete - currentSong should be null`);
 
             // Load the preset data into state
             if (data.boards && data.boards.length > 0) {
