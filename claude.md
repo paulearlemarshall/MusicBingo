@@ -80,8 +80,26 @@ MusicBingo/
 - Artist/Title metadata extraction
 - Technical audio info parsing (bitrate, sample rate, channels)
 - Custom cue point management (start/end times)
+- **Song selection with checkboxes** - select subsets of your library for different game scenarios
 
-### 2. Bingo Ticket Generation
+### 2. Multi-Preset System (NEW!)
+- **Save multiple game configurations** per music folder
+- Each preset stores:
+  - Selected song subset (which songs to use)
+  - Generated tickets and boards
+  - Grid size (3x3, 4x4, 5x5)
+  - PDF settings (header, footer, logo)
+- **Preset management UI** with dropdown selector
+- Create, load, update, and delete presets
+- **Example use cases:**
+  - "80s Night" - 30 selected songs, 10 tickets
+  - "Rock Classics" - 50 different songs, 20 tickets
+  - "Kids Party" - family-friendly subset, 15 tickets
+  - "Full Library" - all songs, 50 tickets
+- **File storage:** `boards_presetname.ini`, `tickets_presetname.ini`
+- Preset names are URL-encoded (e.g., "80s Night" → `boards_80s%20night.ini`)
+
+### 3. Bingo Ticket Generation
 - Configurable grid sizes (typically 5x5)
 - Ensures unique tickets across all players
 - Calculates maximum safe ticket count
@@ -156,6 +174,10 @@ The Electron app uses IPC (Inter-Process Communication) for renderer ↔ main pr
 | `boards:load` | Load generated boards | `object \| null` |
 | `tags:read` | Read ID3 tags from file | `object \| null` |
 | `tags:save` | Write ID3 tags to file | `boolean` |
+| `presets:list` | List available presets in folder | `PresetInfo[]` |
+| `presets:save` | Save preset (boards + tickets) | `boolean` |
+| `presets:load` | Load preset configuration | `object \| null` |
+| `presets:delete` | Delete preset files | `boolean` |
 
 ## Development
 
@@ -190,6 +212,9 @@ The application uses React Context (`GameContext`) for global state:
 - `historyIndex: number` - Current position in history
 - `isPlaying: boolean` - Playback state
 - `volume: number` - Audio volume (0-1)
+- `selectedSongIds: Set<string>` - Song IDs selected for current preset
+- `activePreset: string | null` - Currently loaded preset name
+- `availablePresets: PresetInfo[]` - List of available presets in folder
 
 ### Settings State
 - `pdfConfig: PDFConfig` - PDF header/footer/logo settings
@@ -259,20 +284,27 @@ start=10.0
 end=40.5
 ```
 
-### tickets.ini (per-folder)
+### tickets_[presetname].ini (per-folder, per-preset)
 ```ini
-; Ticket Configuration
+; Ticket Configuration for Preset
 
 [settings]
 header=Musical Bingo
 footer=Have Fun!
 logo=C:\path\to\logo.png
 gridSize=5
+
+[selectedSongs]
+uuid-of-song-1
+uuid-of-song-2
+uuid-of-song-3
 ```
 
-### boards.ini (per-folder)
+**Note:** Preset names are URL-encoded in filenames (e.g., "80s Night" → `tickets_80s%20night.ini`)
+
+### boards_[presetname].ini (per-folder, per-preset)
 ```ini
-; Generated Bingo Boards and Catalog
+; Generated Bingo Boards and Catalog for Preset
 
 [catalog]
 C:\Music\Song1.mp3=Artist Name|Song Title
