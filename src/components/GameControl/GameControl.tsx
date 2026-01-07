@@ -11,7 +11,7 @@ const log = (message: string, ...args: any[]) => {
 
 export const GameControl: React.FC = () => {
     const {
-        currentSong, isPlaying, playNext, replayPrevious, togglePause,
+        currentSong, isPlaying, initializeGame, playNext, replayPrevious, togglePause,
         volume, setVolume, tickets, playedSongs, songs, gameCatalog, songHistory, historyIndex,
         linkEffectEnabled, setLinkEffectEnabled, effects, resetGame,
         overlapSeconds, setOverlapSeconds, autoFade, setAutoFade,
@@ -418,8 +418,8 @@ export const GameControl: React.FC = () => {
                         variant="secondary"
                         onClick={() => {
                             if (!isInitialized) {
-                                log('Initialize Game clicked. Starting first song.');
-                                playNext();
+                                log('Initialize Game clicked. Loading first song without auto-play.');
+                                initializeGame();
                             } else {
                                 log('Manual "Reset Game" clicked. Confirming...');
                                 if (window.confirm("Are you sure you want to reset the current game? This will clear all play history, stats, and the current sequence.")) {
@@ -503,13 +503,16 @@ export const GameControl: React.FC = () => {
                                         <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/30">{currentSong ? formatTime(duration) : '0:00'}</span>
                                     </div>
 
-                                    {/* Inline Start Button for Match #1 - Uses opacity to keep height stable */}
-                                    <div className={`mt-10 transition-all duration-700 ${(!isPlaying && playedSongs.size === 1 && progress === 0) 
-                                        ? 'opacity-100 translate-y-0' 
+                                    {/* Inline Start Button - Shows when song loaded but not playing */}
+                                    <div className={`mt-10 transition-all duration-700 ${(currentSong && !isPlaying && playedSongs.size >= 1)
+                                        ? 'opacity-100 translate-y-0'
                                         : 'opacity-0 pointer-events-none translate-y-4'}`}
                                     >
-                                        <Button 
-                                            onClick={() => togglePause()} 
+                                        <Button
+                                            onClick={() => {
+                                                log('Start Game button clicked. Beginning playback.');
+                                                togglePause();
+                                            }}
                                             className="px-16 py-5 text-xl rounded-full bg-indigo-600 hover:bg-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.4)] transform hover:scale-105 transition-all"
                                         >
                                             Start Game ▶️
