@@ -117,25 +117,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [availablePresets, setAvailablePresets] = useState<PresetInfo[]>([]);
     const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(new Set());
 
-    // Automatically cue the first song when tickets are ready but no song is playing
-    React.useEffect(() => {
-        if (tickets.size > 0 && !currentSong && playedSongs.size === 0) {
-            log("[GameContext] Game ready. Cueing first song...");
-            const catalogToUse = gameCatalog.length > 0 ? gameCatalog : songs;
-            if (catalogToUse.length > 0) {
-                const first = catalogToUse[Math.floor(Math.random() * catalogToUse.length)];
-                // Sync with latest library metadata
-                const libMatch = songs.find(s => s.id === first.id || s.filePath.toLowerCase().replace(/\\/g, '/') === first.filePath.toLowerCase().replace(/\\/g, '/'));
-                const syncedFirst = libMatch ? { ...first, startTime: libMatch.startTime, endTime: libMatch.endTime, duration: libMatch.duration } : first;
-                
-                setCurrentSong(syncedFirst);
-                setPlayedSongs(new Set([syncedFirst.id]));
-                setSongHistory([syncedFirst.id]);
-                setHistoryIndex(0);
-                setIsPlaying(false); // Ensure it doesn't start playing automatically
-            }
-        }
-    }, [tickets.size, currentSong, playedSongs.size, gameCatalog, songs]);
+    // Debug: Watch for currentSong changes
+    useEffect(() => {
+        log(`[DEBUG] ⚠️ CURRENT_SONG CHANGED: ${currentSong ? `"${currentSong.title}"` : 'NULL'}`);
+        console.trace('[DEBUG] currentSong change stack trace');
+    }, [currentSong]);
 
     const updateEffects = (updates: Partial<GameEffects>) => {
         setEffects(prev => ({ ...prev, ...updates }));
