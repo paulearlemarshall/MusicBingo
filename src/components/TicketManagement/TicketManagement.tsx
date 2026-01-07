@@ -44,6 +44,9 @@ export const TicketManagement: React.FC = () => {
     const songsForGeneration = selectedSongIds.size > 0 ? selectedSongIds.size : songs.length;
     const safeMax = BingoGameLogic.calculateSafeMax(songsForGeneration, gridSize);
 
+    // Validation for saving presets
+    const canSavePreset = tickets.size > 0 && header.trim() !== '' && footer.trim() !== '';
+
     const handleGridSizeChange = (newSize: number) => {
         if (gridSize === newSize) return;
 
@@ -183,6 +186,16 @@ export const TicketManagement: React.FC = () => {
     };
 
     const handleSavePresetClick = () => {
+        // Validate before proceeding
+        if (!canSavePreset) {
+            const issues = [];
+            if (tickets.size === 0) issues.push("- Generate tickets");
+            if (header.trim() === '') issues.push("- Enter header text");
+            if (footer.trim() === '') issues.push("- Enter footer text");
+            alert(`Cannot save preset. Please:\n${issues.join('\n')}`);
+            return;
+        }
+
         if (activePreset) {
             // Update existing preset
             if (confirm(`Update preset "${activePreset}"?`)) {
@@ -208,6 +221,16 @@ export const TicketManagement: React.FC = () => {
                 return;
             }
         }
+
+        // Update pdfConfig with current local state before saving
+        setPdfConfig({
+            headerText: header,
+            footerText: footer,
+            logoUrl: logo || undefined
+        });
+
+        // Small delay to ensure state updates propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         const success = await savePreset(trimmedName);
         if (success) {
@@ -271,6 +294,7 @@ export const TicketManagement: React.FC = () => {
                                 onClick={handleSavePresetClick}
                                 variant="primary"
                                 className="bg-emerald-600 hover:bg-emerald-500"
+                                disabled={!canSavePreset}
                             >
                                 {activePreset ? '💾 Update' : '💾 Save As...'}
                             </Button>
@@ -309,7 +333,19 @@ export const TicketManagement: React.FC = () => {
                         </div>
                     )}
 
-                    {!activePreset && selectedSongIds.size === 0 && (
+                    {/* Validation messages */}
+                    {!canSavePreset && (
+                        <div className="text-sm text-amber-400 p-3 bg-amber-500/10 rounded border border-amber-500/30">
+                            ⚠️ To save a preset, you must:
+                            <ul className="ml-6 mt-2 list-disc space-y-1">
+                                {tickets.size === 0 && <li>Generate tickets (currently {tickets.size} tickets)</li>}
+                                {header.trim() === '' && <li>Enter a header text</li>}
+                                {footer.trim() === '' && <li>Enter a footer text</li>}
+                            </ul>
+                        </div>
+                    )}
+
+                    {!activePreset && selectedSongIds.size === 0 && canSavePreset && (
                         <div className="text-sm text-slate-400 p-3 bg-slate-800/30 rounded">
                             💡 Tip: Select songs in Media Control, generate tickets, then save as a preset.
                         </div>
