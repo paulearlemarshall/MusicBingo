@@ -282,6 +282,9 @@ export const GameControl: React.FC = () => {
     useEffect(() => {
         if (currentSong && !isInitialized) {
             setIsInitialized(true);
+        } else if (!currentSong && isInitialized) {
+            // Reset to uninitialized when currentSong is cleared (e.g., preset load, reset)
+            setIsInitialized(false);
         }
     }, [currentSong, isInitialized]);
 
