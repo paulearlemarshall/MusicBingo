@@ -130,23 +130,33 @@ export const TicketManagement: React.FC = () => {
     const handleExportPDF = async () => {
         if (tickets.size === 0) return;
 
+        console.log('[TicketManagement] Exporting PDF with pdfConfig:', pdfConfig);
+
         // Convert logo file path to data URL if it exists
         let logoDataUrl = pdfConfig.logoUrl;
         if (pdfConfig.logoUrl && !pdfConfig.logoUrl.startsWith('data:')) {
+            console.log('[TicketManagement] Converting logo file path to data URL:', pdfConfig.logoUrl);
             try {
                 // @ts-ignore
                 logoDataUrl = await window.ipcRenderer.invoke('file:readImageAsDataUrl', pdfConfig.logoUrl);
                 if (!logoDataUrl) {
-                    console.warn('Failed to convert logo to data URL, generating PDF without logo');
+                    console.warn('[TicketManagement] Failed to convert logo to data URL, generating PDF without logo');
                     logoDataUrl = undefined;
+                } else {
+                    console.log('[TicketManagement] Successfully converted logo to data URL (length:', logoDataUrl.length, ')');
                 }
             } catch (e) {
-                console.error('Error converting logo to data URL:', e);
+                console.error('[TicketManagement] Error converting logo to data URL:', e);
                 logoDataUrl = undefined;
             }
+        } else if (pdfConfig.logoUrl) {
+            console.log('[TicketManagement] Logo is already a data URL');
+        } else {
+            console.log('[TicketManagement] No logo configured');
         }
 
         // Generate PDF with data URL logo
+        console.log('[TicketManagement] Generating PDF with logo:', logoDataUrl ? 'YES' : 'NO');
         PDFGenerator.generateTicketsPDF(Array.from(tickets.values()), {
             ...pdfConfig,
             logoUrl: logoDataUrl
