@@ -10,13 +10,8 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
         addSongs,
         removeSong,
         clearLibrary,
-        selectedSongIds,
-        toggleSongSelection,
-        selectAllSongs,
-        deselectAllSongs
+        selectedSongIds
     } = useGame();
-
-    const allSelected = songs.length > 0 && selectedSongIds.size === songs.length;
 
     const processPaths = (paths: string[]) => {
         const newSongs = paths.map((path: string) => {
@@ -98,33 +93,13 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
 
             <Card>
                 <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="text-slate-400">
-                            {songs.length} songs in library
-                            {selectedSongIds.size > 0 && (
-                                <span className="ml-4 text-emerald-400 font-semibold">
-                                    {selectedSongIds.size} selected
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant={allSelected ? "secondary" : "primary"}
-                                size="sm"
-                                onClick={selectAllSongs}
-                                disabled={songs.length === 0}
-                            >
-                                Select All
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={deselectAllSongs}
-                                disabled={selectedSongIds.size === 0}
-                            >
-                                Unselect All
-                            </Button>
-                        </div>
+                    <div className="text-slate-400">
+                        {songs.length} songs in library
+                        {selectedSongIds.size > 0 && (
+                            <span className="ml-4 text-emerald-400 font-semibold">
+                                ({selectedSongIds.size} selected for ticket generation)
+                            </span>
+                        )}
                     </div>
                     <div className="space-x-4">
                         <Button variant="secondary" onClick={handleGenerateDummy}>Debug: Gen 60 Dummy Songs</Button>
@@ -145,33 +120,20 @@ export const LibraryManager: React.FC<{ onBack: () => void }> = ({ onBack }) => 
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50">
-                            {songs.map(song => {
-                                const isSelected = selectedSongIds.has(song.id);
-                                return (
-                                    <tr key={song.id} className="hover:bg-slate-700/30">
-                                        <td className="px-6 py-4 font-medium text-white">{song.artist}</td>
-                                        <td className="px-6 py-4">{song.title}</td>
-                                        <td className="px-6 py-4 text-right space-x-3">
-                                            <button
-                                                onClick={() => toggleSongSelection(song.id)}
-                                                className={`text-sm font-semibold px-3 py-1 rounded ${
-                                                    isSelected
-                                                        ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                                                        : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                                                }`}
-                                            >
-                                                {isSelected ? 'Selected' : 'Unselected'}
-                                            </button>
-                                            <button
-                                                onClick={() => removeSong(song.id)}
-                                                className="text-red-400 hover:text-red-300 text-sm font-semibold"
-                                            >
-                                                Remove
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            {songs.map(song => (
+                                <tr key={song.id} className="hover:bg-slate-700/30">
+                                    <td className="px-6 py-4 font-medium text-white">{song.artist}</td>
+                                    <td className="px-6 py-4">{song.title}</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button
+                                            onClick={() => removeSong(song.id)}
+                                            className="text-red-400 hover:text-red-300 text-sm font-semibold"
+                                        >
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
                             {songs.length === 0 && (
                                 <tr>
                                     <td colSpan={3} className="px-6 py-12 text-center text-slate-500">

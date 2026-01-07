@@ -168,9 +168,23 @@ const TagEditor: React.FC<{ song: Song; onClose: () => void; onSave: (updatedSon
 };
 
 export const MediaControl: React.FC = () => {
-    const { songs, addSongs, removeSong, updateSong, activeFolder, setActiveFolder, clearLibrary } = useGame();
+    const {
+        songs,
+        addSongs,
+        removeSong,
+        updateSong,
+        activeFolder,
+        setActiveFolder,
+        clearLibrary,
+        selectedSongIds,
+        toggleSongSelection,
+        selectAllSongs,
+        deselectAllSongs
+    } = useGame();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [editingSong, setEditingSong] = useState<Song | null>(null);
+
+    const allSelected = songs.length > 0 && selectedSongIds.size === songs.length;
 
     const handleClearLibrary = () => {
         if (confirm("Are you sure you want to clear the entire library? This will also reset the active folder and any generated tickets.")) {
@@ -363,11 +377,38 @@ export const MediaControl: React.FC = () => {
             <Card>
                 <div className="flex flex-col gap-4 mb-6">
                     <div className="flex justify-between items-start">
-                        <div>
-                            <div className="text-slate-400 font-medium mb-1">{songs.length} songs in library</div>
-                            <div className="text-sm font-medium">
-                                <span className="text-slate-500">Active Folder:</span>
-                                <span className="text-slate-200 font-mono ml-2 px-2 py-0.5 bg-slate-800 rounded border border-slate-700">{activeFolder || '(default) none'}</span>
+                        <div className="flex items-center gap-6">
+                            <div>
+                                <div className="text-slate-400 font-medium mb-1">
+                                    {songs.length} songs in library
+                                    {selectedSongIds.size > 0 && (
+                                        <span className="ml-4 text-emerald-400 font-semibold">
+                                            {selectedSongIds.size} selected
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-sm font-medium">
+                                    <span className="text-slate-500">Active Folder:</span>
+                                    <span className="text-slate-200 font-mono ml-2 px-2 py-0.5 bg-slate-800 rounded border border-slate-700">{activeFolder || '(default) none'}</span>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant={allSelected ? "secondary" : "primary"}
+                                    size="sm"
+                                    onClick={selectAllSongs}
+                                    disabled={songs.length === 0}
+                                >
+                                    Select All
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={deselectAllSongs}
+                                    disabled={selectedSongIds.size === 0}
+                                >
+                                    Unselect All
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -393,47 +434,60 @@ export const MediaControl: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50 bg-slate-800/20">
-                            {songs.map(song => (
-                                <tr key={song.id} className="hover:bg-slate-700/10 transition-colors">
-                                    <td className="px-6 py-6">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <div className="font-bold text-lg text-white">{song.title}</div>
-                                                <div className="flex items-center gap-3 text-sm text-slate-400">
-                                                    <span className="font-medium text-slate-300">{song.artist}</span>
-                                                    {song.albumArtist && (
-                                                        <span className="text-[10px] bg-slate-700/50 px-1.5 py-0.5 rounded border border-slate-600 italic">
-                                                            AA: {song.albumArtist}
-                                                        </span>
-                                                    )}
-                                                    <div className="flex items-center gap-2 ml-4 text-[10px] font-mono text-slate-500 bg-slate-950/50 px-2 py-0.5 rounded">
-                                                        {song.bitrate && <span>{Math.round(song.bitrate / 1000)}kbps</span>}
-                                                        {song.sampleRate && <span>{song.sampleRate / 1000}kHz</span>}
-                                                        {song.channels && <span>{song.channels === 2 ? 'Stereo' : song.channels === 1 ? 'Mono' : song.channels + 'ch'}</span>}
+                            {songs.map(song => {
+                                const isSelected = selectedSongIds.has(song.id);
+                                return (
+                                    <tr key={song.id} className="hover:bg-slate-700/10 transition-colors">
+                                        <td className="px-6 py-6">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <div className="font-bold text-lg text-white">{song.title}</div>
+                                                    <div className="flex items-center gap-3 text-sm text-slate-400">
+                                                        <span className="font-medium text-slate-300">{song.artist}</span>
+                                                        {song.albumArtist && (
+                                                            <span className="text-[10px] bg-slate-700/50 px-1.5 py-0.5 rounded border border-slate-600 italic">
+                                                                AA: {song.albumArtist}
+                                                            </span>
+                                                        )}
+                                                        <div className="flex items-center gap-2 ml-4 text-[10px] font-mono text-slate-500 bg-slate-950/50 px-2 py-0.5 rounded">
+                                                            {song.bitrate && <span>{Math.round(song.bitrate / 1000)}kbps</span>}
+                                                            {song.sampleRate && <span>{song.sampleRate / 1000}kHz</span>}
+                                                            {song.channels && <span>{song.channels === 2 ? 'Stereo' : song.channels === 1 ? 'Mono' : song.channels + 'ch'}</span>}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <MiniPlayer song={song} />
-                                    </td>
-                                    <td className="px-6 py-6 text-right align-top">
-                                        <div className="flex flex-col gap-2">
-                                            <button
-                                                onClick={() => setEditingSong(song)}
-                                                className="text-indigo-400 hover:text-indigo-300 text-sm font-bold bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1 rounded transition-all"
-                                            >
-                                                Tag
-                                            </button>
-                                            <button
-                                                onClick={() => removeSong(song.id)}
-                                                className="text-rose-400 hover:text-rose-300 text-sm font-bold bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1 rounded transition-all"
-                                            >
-                                                Remove
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                                            <MiniPlayer song={song} />
+                                        </td>
+                                        <td className="px-6 py-6 text-right align-top">
+                                            <div className="flex flex-col gap-2">
+                                                <button
+                                                    onClick={() => toggleSongSelection(song.id)}
+                                                    className={`text-sm font-bold px-3 py-1 rounded transition-all ${
+                                                        isSelected
+                                                            ? 'text-emerald-400 bg-emerald-500/20 hover:bg-emerald-500/30'
+                                                            : 'text-red-400 bg-red-500/20 hover:bg-red-500/30'
+                                                    }`}
+                                                >
+                                                    {isSelected ? 'Selected' : 'Unselected'}
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingSong(song)}
+                                                    className="text-indigo-400 hover:text-indigo-300 text-sm font-bold bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1 rounded transition-all"
+                                                >
+                                                    Tag
+                                                </button>
+                                                <button
+                                                    onClick={() => removeSong(song.id)}
+                                                    className="text-rose-400 hover:text-rose-300 text-sm font-bold bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1 rounded transition-all"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             {songs.length === 0 && (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
