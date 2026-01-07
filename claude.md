@@ -288,6 +288,308 @@ C:\Music\Song2.mp3=Another Artist|Another Song
 ...
 ```
 
+## Git Best Practices for This Project
+
+### Commit Frequency
+**Commit often, push when stable.** As a general rule:
+- Commit after completing a logical unit of work (a feature, a bug fix, a refactor)
+- Commit when your code is in a working state (builds and runs)
+- Commit before starting something risky or experimental
+- Commit at the end of each work session
+
+**Good times to commit:**
+- ✅ "Added volume control slider to MediaControl component"
+- ✅ "Fixed bug where songs wouldn't load from folders with spaces"
+- ✅ "Refactored ticket generation to handle edge cases"
+- ✅ "Updated README with installation instructions"
+
+**Too small (avoid these):**
+- ❌ "Fixed typo" (unless it's a critical bug)
+- ❌ "Changed variable name"
+- ❌ "Added semicolon"
+
+**Too large (break these up):**
+- ❌ "Worked on the app" (what specifically?)
+- ❌ "Various fixes and improvements" (be specific)
+
+### Commit Messages
+
+Use clear, descriptive commit messages that explain **what** and **why**:
+
+```bash
+# Good format:
+git commit -m "Add BPM detection to audio analysis
+
+- Integrate web-audio-beat-detector library
+- Display BPM in library manager UI
+- Cache BPM results to avoid re-calculation
+
+This helps users select energetic songs for the game."
+```
+
+**Message Structure:**
+1. **First line**: Short summary (50 chars or less) in imperative mood
+   - "Add feature" not "Added feature"
+   - "Fix bug" not "Fixed bug"
+2. **Blank line**
+3. **Body** (optional): Explain what and why, not how
+   - What changed?
+   - Why was this change necessary?
+   - Any side effects or considerations?
+
+**Examples:**
+```bash
+# Feature
+git commit -m "Add keyboard shortcuts for media controls"
+
+# Bug fix
+git commit -m "Fix audio playback stopping when navigating between tabs"
+
+# Refactoring
+git commit -m "Extract PDF generation logic into separate utility class"
+
+# Documentation
+git commit -m "Update claude.md with git workflow documentation"
+```
+
+### What NOT to Commit
+
+The `.gitignore` is already configured, but be aware of what's excluded:
+
+**Never commit:**
+- ❌ `node_modules/` - Always reinstall with `npm install`
+- ❌ Build outputs (`dist/`, `dist-electron/`, `dist-app/`)
+- ❌ User music files (`Music/`, `*.mp3`, `*.wav`, `*.ogg`)
+- ❌ Effect sound files if copyrighted
+- ❌ `settings.ini` - Contains user-specific file paths
+- ❌ `cue.ini`, `tickets.ini`, `boards.ini` - User-generated data
+- ❌ API keys, passwords, secrets
+- ❌ Personal test data
+
+**Always commit:**
+- ✅ Source code (`src/`, `electron/`)
+- ✅ Configuration files (`package.json`, `tsconfig.json`, `vite.config.ts`)
+- ✅ Documentation (`claude.md`, `README.md`)
+- ✅ `.gitignore` itself
+
+### Checking Before You Commit
+
+Always review what you're committing:
+
+```bash
+# See what files have changed
+git status
+
+# See the actual changes in detail
+git diff
+
+# See what's staged for commit
+git diff --cached
+
+# Review and stage selectively
+git add -p    # Interactive staging - very useful!
+```
+
+### Basic Workflow
+
+```bash
+# 1. Check current status
+git status
+
+# 2. Stage specific files
+git add src/components/NewFeature.tsx
+git add src/utils/helper.ts
+
+# Or stage everything (be careful!)
+git add .
+
+# 3. Commit with a message
+git commit -m "Add new feature description"
+
+# 4. Push to remote (if you have one set up)
+git push
+```
+
+### Branching Strategy (Simple Approach)
+
+For solo development or small teams:
+
+```bash
+# Main branch for stable code
+master (or main)
+
+# Create feature branches for new work
+git checkout -b feature/audio-visualizer
+# ... work on feature ...
+git add .
+git commit -m "Add audio visualizer component"
+
+# Merge back when done
+git checkout master
+git merge feature/audio-visualizer
+git branch -d feature/audio-visualizer  # Delete merged branch
+```
+
+**Branch naming conventions:**
+- `feature/description` - New features
+- `fix/description` - Bug fixes
+- `refactor/description` - Code improvements
+- `docs/description` - Documentation updates
+
+**When to branch:**
+- Working on a new feature that might take multiple commits
+- Experimenting with something that might not work
+- Collaborating with others on the same project
+- Want to keep master stable while trying new things
+
+**When to stay on master:**
+- Quick fixes or small changes
+- Solo development and you're confident
+- Prototyping and not worried about stability
+
+### Undoing Mistakes
+
+**Undo last commit (keep changes):**
+```bash
+git reset --soft HEAD~1
+# Your changes are still staged, you can recommit
+```
+
+**Undo last commit (discard changes) - CAREFUL:**
+```bash
+git reset --hard HEAD~1
+# Changes are GONE forever!
+```
+
+**Unstage a file:**
+```bash
+git reset HEAD src/components/File.tsx
+```
+
+**Discard changes in a file - CAREFUL:**
+```bash
+git checkout -- src/components/File.tsx
+# This throws away all unsaved changes!
+```
+
+**Revert a commit (safe way):**
+```bash
+git revert abc123
+# Creates a new commit that undoes the old one
+```
+
+### Working with Remote Repositories
+
+**First time setup with GitHub:**
+```bash
+# Create repo on GitHub first, then:
+git remote add origin https://github.com/username/MusicBingo.git
+git branch -M main
+git push -u origin main
+```
+
+**Daily workflow with remote:**
+```bash
+# Start your day - get latest changes
+git pull
+
+# ... do your work, commit locally ...
+
+# End of day - share your work
+git push
+
+# If push fails (someone else pushed first)
+git pull --rebase
+git push
+```
+
+### Viewing History
+
+```bash
+# Simple log
+git log --oneline
+
+# Detailed log with diffs
+git log -p
+
+# Visual graph (for branches)
+git log --oneline --graph --all
+
+# See what changed in a specific commit
+git show abc123
+
+# See all changes to a specific file
+git log -p src/components/MediaControl.tsx
+```
+
+### Project-Specific Tips
+
+**For Music Bingo development:**
+
+1. **Test before committing**: Run `npm run dev` to ensure app starts
+2. **Build test occasionally**: Run `npm run build` to catch TypeScript errors
+3. **Keep settings.ini out**: Never commit your personal paths
+4. **Document new IPC channels**: Update claude.md when adding IPC handlers
+5. **Commit both sides**: When changing IPC, commit both renderer and main process code together
+
+**Commit examples for this project:**
+```bash
+# Good
+git commit -m "Add shuffle mode to ticket generation"
+git commit -m "Fix cue points not saving on Windows paths"
+git commit -m "Refactor FolderScanner to use async/await"
+
+# Not as good
+git commit -m "Updates"
+git commit -m "WIP" (work in progress - only use temporarily)
+git commit -m "asdfasdf" (never do this!)
+```
+
+### Commit Checklist
+
+Before each commit, ask yourself:
+- [ ] Does the code run without errors?
+- [ ] Did I remove console.logs added for debugging?
+- [ ] Did I update documentation if needed?
+- [ ] Is this a logical, complete change?
+- [ ] Would my commit message help me in 6 months?
+- [ ] Am I committing only relevant files?
+- [ ] Did I accidentally include personal settings/data?
+
+### Quick Reference
+
+```bash
+# Common commands you'll use daily
+git status              # What's changed?
+git add <file>          # Stage a file
+git add .               # Stage everything
+git commit -m "msg"     # Commit staged changes
+git push                # Send to remote
+git pull                # Get from remote
+git log --oneline       # View history
+
+# Useful but less frequent
+git diff                # See unstaged changes
+git diff --cached       # See staged changes
+git checkout -b <name>  # Create new branch
+git checkout <name>     # Switch branch
+git branch              # List branches
+git merge <branch>      # Merge branch into current
+
+# "Oh no!" commands
+git reset --soft HEAD~1 # Undo last commit, keep changes
+git checkout -- <file>  # Discard changes (CAREFUL!)
+git stash               # Temporarily save changes
+git stash pop           # Restore stashed changes
+```
+
+### Learning Resources
+
+- [Git Cheat Sheet](https://education.github.com/git-cheat-sheet-education.pdf)
+- [Oh Sh*t, Git!?!](https://ohshitgit.com/) - Fixes for common mistakes
+- [GitHub Desktop](https://desktop.github.com/) - GUI if you prefer visual tools
+- `git help <command>` - Built-in help
+
 ## Common Tasks
 
 ### Adding a New Effect Sound
