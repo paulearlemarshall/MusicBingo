@@ -22,12 +22,7 @@ export const GameControl: React.FC = () => {
     const [duration, setDuration] = useState(0);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // Debug logging
-    useEffect(() => {
-        log(`[DEBUG] State changed - isInitialized: ${isInitialized}, currentSong: ${currentSong ? currentSong.title : 'null'}, historyIndex: ${historyIndex}, playedSongs.size: ${playedSongs.size}`);
-    }, [isInitialized, currentSong, historyIndex, playedSongs.size]);
-    
-        const soundRef = useRef<Howl | null>(null);
+    const soundRef = useRef<Howl | null>(null);
         const effectRef = useRef<Howl | null>(null);
         const animationFrameId = useRef<number>();
         const isTransitioningRef = useRef(false);
@@ -426,10 +421,6 @@ export const GameControl: React.FC = () => {
                 <div>
                     <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">Game Control</h2>
                     <p className="text-slate-400 mt-1">DJ Booth & Playlist Management</p>
-                    {/* Debug info */}
-                    <div className="mt-2 text-xs font-mono text-amber-400 bg-slate-900/50 p-2 rounded border border-amber-500/30">
-                        🐛 DEBUG: isInitialized={isInitialized.toString()} | currentSong={currentSong ? 'EXISTS' : 'NULL'} | historyIndex={historyIndex} | playedSongs={playedSongs.size}
-                    </div>
                 </div>
                 <div className="flex gap-6 items-start">
                     <Button
@@ -485,11 +476,7 @@ export const GameControl: React.FC = () => {
                         <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-transparent relative overflow-hidden group z-10 rounded-xl min-h-[300px] flex flex-col justify-center">
                             <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-                            {(() => {
-                                const showSongOrPlaceholder = currentSong || !isInitialized;
-                                log(`[DEBUG] Render decision: showSongOrPlaceholder=${showSongOrPlaceholder}, currentSong=${currentSong ? 'EXISTS' : 'NULL'}, isInitialized=${isInitialized}`);
-                                return showSongOrPlaceholder;
-                            })() ? (
+                            {(currentSong || !isInitialized) ? (
                                 <div className="text-center py-12 relative z-10">
                                     <span className="inline-block px-4 py-1.5 rounded-full bg-indigo-500/20 text-indigo-200 text-sm font-black mb-6 tracking-wide uppercase border border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
                                         {isPlaying ? "Now Playing" : "Up First"}: {currentSong ? historyIndex + 1 : 1} of {gameCatalog.length > 0 ? gameCatalog.length : songs.length}
