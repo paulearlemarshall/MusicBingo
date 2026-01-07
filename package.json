@@ -1,0 +1,57 @@
+{
+  "name": "music-bingo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A Music Bingo Management Application",
+  "author": "User",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"cross-env BROWSER=none npm run dev:react\" \"npm run dev:electron\"",
+    "dev:react": "vite",
+    "dev:electron": "wait-on tcp:5173 && tsc --skipLibCheck -p electron/tsconfig.json && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .",
+    "build": "tsc && vite build && tsc -p electron/tsconfig.json && electron-builder",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "howler": "^2.2.4",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.1",
+    "lamejs": "^1.2.1",
+    "lucide-react": "^0.562.0",
+    "node-id3": "^0.2.9",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "uuid": "^9.0.1",
+    "web-audio-beat-detector": "^8.2.32"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.11",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@types/uuid": "^9.0.7",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vitest": "^3.2.4",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.musicbingo.app",
+    "productName": "Music Bingo",
+    "directories": {
+      "output": "dist-app"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ]
+  }
+}

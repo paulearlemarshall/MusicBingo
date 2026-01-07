@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+dist-electron/
+dist-app/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# User data and media files
+Music/
+Effects/
+*.mp3
+*.wav
+*.ogg
+
+# Settings and user-specific configuration
+settings.ini
+cue.ini
+tickets.ini
+boards.ini
+
+# Electron build files
+out/
+release/
+*.exe
+*.dmg
+*.AppImage
+
+# Testing
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
