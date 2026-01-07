@@ -10,16 +10,17 @@ const log = (message: string, ...args: any[]) => {
 };
 
 export const GameControl: React.FC = () => {
-    const { 
+    const {
         currentSong, isPlaying, playNext, replayPrevious, togglePause,
         volume, setVolume, tickets, playedSongs, songs, gameCatalog, songHistory, historyIndex,
         linkEffectEnabled, setLinkEffectEnabled, effects, resetGame,
         overlapSeconds, setOverlapSeconds, autoFade, setAutoFade,
         activeEffect, setActiveEffect
     } = useGame();
-    
+
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [isInitialized, setIsInitialized] = useState(false);
     
         const soundRef = useRef<Howl | null>(null);
         const effectRef = useRef<Howl | null>(null);
@@ -277,6 +278,13 @@ export const GameControl: React.FC = () => {
         }
     }, [volume]);
 
+    // Track initialization state based on currentSong
+    useEffect(() => {
+        if (currentSong && !isInitialized) {
+            setIsInitialized(true);
+        }
+    }, [currentSong, isInitialized]);
+
 
     // ======== UTILITY & SFX FUNCTIONS ======== 
     const handleFadeToggle = useCallback(() => {
@@ -409,18 +417,28 @@ export const GameControl: React.FC = () => {
                     <Button
                         variant="secondary"
                         onClick={() => {
-                            log('Manual "Reset Game" clicked. Confirming...');
-                            if (window.confirm("Are you sure you want to reset the current game? This will clear all play history, stats, and the current sequence.")) {
-                                log('Reset Game confirmed. Calling resetGame().');
-                                resetGame();
+                            if (!isInitialized) {
+                                log('Initialize Game clicked. Starting first song.');
+                                playNext();
                             } else {
-                                log('Reset Game cancelled.');
+                                log('Manual "Reset Game" clicked. Confirming...');
+                                if (window.confirm("Are you sure you want to reset the current game? This will clear all play history, stats, and the current sequence.")) {
+                                    log('Reset Game confirmed. Calling resetGame().');
+                                    resetGame();
+                                    setIsInitialized(false);
+                                } else {
+                                    log('Reset Game cancelled.');
+                                }
                             }
                         }}
-                        className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/50 transition-all flex items-center gap-2"
+                        className={`transition-all flex items-center gap-2 ${
+                            !isInitialized
+                                ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50'
+                                : 'border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/50'
+                        }`}
                     >
-                        <span>🔄</span>
-                        <span>Reset Game</span>
+                        <span>{!isInitialized ? '🎬' : '🔄'}</span>
+                        <span>{!isInitialized ? 'Initialize Game' : 'Reset Game'}</span>
                     </Button>
                     <div className="text-right">
                         <div className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Session Progress</div>
@@ -446,16 +464,16 @@ export const GameControl: React.FC = () => {
                         <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-transparent relative overflow-hidden group z-10 rounded-xl min-h-[300px] flex flex-col justify-center">
                             <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                             
-                            {currentSong ? (
+                            {currentSong || !isInitialized ? (
                                 <div className="text-center py-12 relative z-10">
                                     <span className="inline-block px-4 py-1.5 rounded-full bg-indigo-500/20 text-indigo-200 text-sm font-black mb-6 tracking-wide uppercase border border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                                        {isPlaying ? "Now Playing" : "Up First"}: {historyIndex + 1} of {gameCatalog.length > 0 ? gameCatalog.length : songs.length}
+                                        {isPlaying ? "Now Playing" : "Up First"}: {currentSong ? historyIndex + 1 : 1} of {gameCatalog.length > 0 ? gameCatalog.length : songs.length}
                                     </span>
                                     <h3 className="text-2xl md:text-3xl font-black text-white mb-1 tracking-tight drop-shadow-lg lg:px-12 leading-tight truncate uppercase">
-                                        {currentSong.artist}
+                                        {currentSong ? currentSong.artist : 'Artist'}
                                     </h3>
                                     <div className="text-lg md:text-xl font-bold text-indigo-400 tracking-wide truncate uppercase italic">
-                                        {currentSong.title}
+                                        {currentSong ? currentSong.title : 'Title'}
                                     </div>
                                     <div className="mt-12 relative group/shuttle mx-auto max-w-2xl h-6 flex items-center px-4">
                                         <div className="absolute inset-x-4 bg-slate-950/50 rounded-full h-3 overflow-hidden shadow-inner border border-slate-700/30">
@@ -476,13 +494,13 @@ export const GameControl: React.FC = () => {
                                         />
                                     </div>
                                     <div className="flex justify-around max-w-2xl mx-auto mt-8 text-[10px] text-slate-500 font-mono">
-                                        <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/30">{formatTime(progress)}</span>
-                                        {clipTimeRemaining !== null && (
+                                        <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/30">{currentSong ? formatTime(progress) : '0:00'}</span>
+                                        {currentSong && clipTimeRemaining !== null && (
                                             <span className="bg-amber-800/50 px-3 py-0.5 rounded-full border border-amber-700/30 text-amber-300 animate-pulse">
                                                 CLIP ENDS IN: {formatTime(clipTimeRemaining)}
                                             </span>
                                         )}
-                                        <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/30">{formatTime(duration)}</span>
+                                        <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/30">{currentSong ? formatTime(duration) : '0:00'}</span>
                                     </div>
 
                                     {/* Inline Start Button for Match #1 - Uses opacity to keep height stable */}
