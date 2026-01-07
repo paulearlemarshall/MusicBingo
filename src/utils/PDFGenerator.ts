@@ -59,28 +59,50 @@ export class PDFGenerator {
     }
 
     private static drawTicket(doc: any, ticket: BingoTicket, config: PDFConfig, _x: number, y: number) {
+        // A4 dimensions and margins
+        const pageWidth = 210; // A4 width in mm
+        const leftMargin = 10;
+        const rightMargin = 10;
+        const contentWidth = pageWidth - leftMargin - rightMargin;
+
         // Header
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text(config.headerText, 105, y + 10, { align: "center" });
+        doc.text(config.headerText, pageWidth / 2, y + 10, { align: "center" });
 
-        // Grid
+        // Grid - calculate dimensions for uniform spacing
         const body = ticket.grid.map(row =>
             row.map(cell => `${cell.song.artist}\n${cell.song.title}`)
         );
 
-        autoTable(doc, {
+        const gridSize = ticket.grid.length; // 3, 4, or 5
+        const cellHeight = 16; // Fixed height for uniform vertical spacing
+        const tableWidth = contentWidth - 10; // Leave small padding from edges
+        const columnWidth = tableWidth / gridSize; // Uniform column width
+
+        // Create columnStyles object with uniform widths for all columns
+        const columnStyles: any = {};
+        for (let i = 0; i < gridSize; i++) {
+            columnStyles[i] = { cellWidth: columnWidth };
+        }
+
+        const tableResult = autoTable(doc, {
             startY: y + 15,
+            margin: { left: leftMargin + 5, right: rightMargin + 5 },
             body: body,
             theme: 'grid',
+            tableWidth: tableWidth,
+            columnStyles: columnStyles,
             styles: {
-                fontSize: 9, // Slightly smaller to ensure fit
-                cellPadding: 2, // Reduced padding
+                fontSize: 9,
+                cellPadding: 2,
                 valign: 'middle',
                 halign: 'center',
-                minCellHeight: 16 // Reduced from 18 to 16 to ensuring fitting 2 tickets
+                minCellHeight: cellHeight, // Uniform height
+                cellWidth: 'wrap'
             },
             pageBreak: 'avoid',
+            rowPageBreak: 'avoid',
             headStyles: {
                 fillColor: [41, 128, 185],
                 textColor: 255,
@@ -128,11 +150,15 @@ export class PDFGenerator {
             }
         });
 
+        // Get the final Y position after table (from autoTable result)
+        //@ts-ignore
+        const tableEndY = doc.lastAutoTable.finalY || (y + 15 + (gridSize * cellHeight));
+        const footerY = tableEndY + 8; // Small gap after table
+
         // Footer
-        const footerY = y + 115; // Adjusted Y for footer
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text(config.footerText, 105, footerY, { align: "center" });
+        doc.text(config.footerText, pageWidth / 2, footerY, { align: "center" });
 
         // Ticket Number Circle (Left Side)
         const circleX = 25;
@@ -148,11 +174,20 @@ export class PDFGenerator {
         // Using common hack for vertical alignment since baseline support varies
         doc.text(ticket.id, circleX, circleY + 1.5, { align: "center" });
 
-        // Logo (Bottom Right)
+        // Logo - Anchored to bottom-right of non-margin space
         if (config.logoUrl) {
             try {
-                // Moved to right side (175, finalY) to avoid overlapping with ticket circle
-                doc.addImage(config.logoUrl, 'PNG', 170, footerY - 10, 20, 20);
+                const logoWidth = 20;
+                const logoHeight = 20;
+                const ticketBottomY = footerY + 5; // Bottom of ticket area
+                const ticketRightX = pageWidth - rightMargin;
+
+                // Position logo so its bottom-right corner aligns with ticket's bottom-right
+                // jsPDF addImage uses top-left corner, so we subtract dimensions
+                const logoX = ticketRightX - logoWidth;
+                const logoY = ticketBottomY - logoHeight;
+
+                doc.addImage(config.logoUrl, 'PNG', logoX, logoY, logoWidth, logoHeight);
             } catch (e) {
                 console.warn("Failed to add logo", e);
             }
