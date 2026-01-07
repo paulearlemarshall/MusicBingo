@@ -6,18 +6,27 @@ import { PDFGenerator } from '../../utils/PDFGenerator';
 import { BingoGameLogic } from '../../utils/BingoLogic';
 
 export const TicketManagement: React.FC = () => {
-    const { 
-        tickets, 
-        generateTickets, 
-        pdfConfig, 
-        setPdfConfig, 
-        songs, 
+    const {
+        tickets,
+        generateTickets,
+        pdfConfig,
+        setPdfConfig,
+        songs,
         gameCatalog,
-        activeFolder, 
-        loadTicketsFromBoards, 
+        selectedSongIds,
+        activeFolder,
+        loadTicketsFromBoards,
         clearTickets,
         gridSize,
-        setGridSize
+        setGridSize,
+        // Preset management
+        activePreset,
+        availablePresets,
+        loadPresets,
+        loadPreset,
+        savePreset,
+        deletePreset,
+        setActivePreset
     } = useGame();
 
     // Local state for settings form
@@ -26,6 +35,10 @@ export const TicketManagement: React.FC = () => {
     const [logo, setLogo] = useState(pdfConfig.logoUrl || '');
     const [ticketCountToGen, setTicketCountToGen] = useState(30);
     const [showCatalogModal, setShowCatalogModal] = useState(false);
+
+    // Preset management state
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [presetNameInput, setPresetNameInput] = useState('');
 
     const requiredSongs = gridSize * gridSize;
     const safeMax = BingoGameLogic.calculateSafeMax(songs.length, gridSize);
@@ -144,6 +157,79 @@ export const TicketManagement: React.FC = () => {
         PDFGenerator.generateTicketsPDF(Array.from(tickets.values()), pdfConfig);
     };
 
+    // Load presets when folder changes
+    useEffect(() => {
+        if (activeFolder) {
+            loadPresets(activeFolder);
+        }
+    }, [activeFolder, loadPresets]);
+
+    // Preset handlers
+    const handlePresetChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const presetName = e.target.value;
+        if (!presetName) {
+            setActivePreset(null);
+            return;
+        }
+
+        if (tickets.size > 0) {
+            if (confirm(`Switching to preset "${presetName}" will clear current tickets. Continue?`)) {
+                await loadPreset(presetName);
+            }
+        } else {
+            await loadPreset(presetName);
+        }
+    };
+
+    const handleSavePresetClick = () => {
+        if (activePreset) {
+            // Update existing preset
+            if (confirm(`Update preset "${activePreset}"?`)) {
+                handleSavePresetConfirm(activePreset);
+            }
+        } else {
+            // Save as new - show modal
+            setPresetNameInput('');
+            setShowSaveModal(true);
+        }
+    };
+
+    const handleSavePresetConfirm = async (name: string) => {
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            alert("Please enter a preset name");
+            return;
+        }
+
+        // Check if preset already exists (for save-as)
+        if (!activePreset && availablePresets.some(p => p.name.toLowerCase() === trimmedName.toLowerCase())) {
+            if (!confirm(`Preset "${trimmedName}" already exists. Overwrite?`)) {
+                return;
+            }
+        }
+
+        const success = await savePreset(trimmedName);
+        if (success) {
+            setShowSaveModal(false);
+            alert(`Preset "${trimmedName}" saved successfully!`);
+        } else {
+            alert("Failed to save preset");
+        }
+    };
+
+    const handleDeletePreset = async () => {
+        if (!activePreset) return;
+
+        if (confirm(`Delete preset "${activePreset}"? This cannot be undone.`)) {
+            const success = await deletePreset(activePreset);
+            if (success) {
+                alert(`Preset "${activePreset}" deleted`);
+            } else {
+                alert("Failed to delete preset");
+            }
+        }
+    };
+
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6 h-full overflow-y-auto">
             <header className="flex justify-between items-start">
@@ -159,6 +245,76 @@ export const TicketManagement: React.FC = () => {
                     💾 Save PDF and Game Board Settings
                 </Button>
             </header>
+
+            {/* Preset Management Section */}
+            <Card title="🎯 Preset Management">
+                <div className="space-y-4">
+                    <div className="flex gap-4 items-start">
+                        <div className="flex-1">
+                            <label className="block text-slate-400 mb-2 text-sm">Select Preset</label>
+                            <select
+                                value={activePreset || ''}
+                                onChange={handlePresetChange}
+                                className="w-full bg-slate-700 text-white rounded p-3 border border-slate-600 focus:border-emerald-500 outline-none transition-colors"
+                            >
+                                <option value="">-- New Preset --</option>
+                                {availablePresets.map(preset => (
+                                    <option key={preset.encodedName} value={preset.name}>
+                                        {preset.name} {preset.hasBoards ? `(saved)` : '(incomplete)'}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex gap-2 pt-7">
+                            <Button
+                                onClick={handleSavePresetClick}
+                                variant="primary"
+                                className="bg-emerald-600 hover:bg-emerald-500"
+                            >
+                                {activePreset ? '💾 Update' : '💾 Save As...'}
+                            </Button>
+                            {activePreset && (
+                                <Button
+                                    onClick={handleDeletePreset}
+                                    variant="danger"
+                                >
+                                    🗑️ Delete
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Preset Info Display */}
+                    {activePreset && (
+                        <div className="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                            <div className="text-sm space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400">Preset:</span>
+                                    <span className="text-emerald-400 font-semibold">{activePreset}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400">Selected Songs:</span>
+                                    <span className="text-white">{selectedSongIds.size} of {songs.length}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400">Grid Size:</span>
+                                    <span className="text-white">{gridSize}x{gridSize}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400">Tickets:</span>
+                                    <span className="text-white">{tickets.size}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {!activePreset && selectedSongIds.size === 0 && (
+                        <div className="text-sm text-slate-400 p-3 bg-slate-800/30 rounded">
+                            💡 Tip: Select songs in the Library Manager, generate tickets, then save as a preset.
+                        </div>
+                    )}
+                </div>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* PDF Settings - Now on the left */}
@@ -347,6 +503,66 @@ export const TicketManagement: React.FC = () => {
                             <Button variant="secondary" onClick={() => setShowCatalogModal(false)} className="w-full">
                                 Close
                             </Button>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
+            {/* Save Preset Modal */}
+            {showSaveModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <Card title="💾 Save Preset" className="w-full max-w-md">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-slate-400 mb-2 text-sm">
+                                    Preset Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={presetNameInput}
+                                    onChange={(e) => setPresetNameInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleSavePresetConfirm(presetNameInput);
+                                        } else if (e.key === 'Escape') {
+                                            setShowSaveModal(false);
+                                        }
+                                    }}
+                                    placeholder="e.g., 80s Night, Rock Classics, Kids Party"
+                                    className="w-full bg-slate-700 text-white rounded p-3 border border-slate-600 focus:border-emerald-500 outline-none transition-colors"
+                                    autoFocus
+                                />
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Use letters, numbers, spaces, hyphens, and underscores
+                                </p>
+                            </div>
+
+                            <div className="text-sm text-slate-400 p-3 bg-slate-800/50 rounded">
+                                <strong>This preset will save:</strong>
+                                <ul className="mt-2 space-y-1 ml-4 list-disc">
+                                    <li>{selectedSongIds.size} selected songs</li>
+                                    <li>{tickets.size} generated tickets</li>
+                                    <li>Grid size: {gridSize}x{gridSize}</li>
+                                    <li>PDF settings (header, footer, logo)</li>
+                                </ul>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <Button
+                                    onClick={() => handleSavePresetConfirm(presetNameInput)}
+                                    variant="primary"
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+                                >
+                                    Save Preset
+                                </Button>
+                                <Button
+                                    onClick={() => setShowSaveModal(false)}
+                                    variant="secondary"
+                                    className="flex-1"
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
                         </div>
                     </Card>
                 </div>
