@@ -377,38 +377,18 @@ export const MediaControl: React.FC = () => {
             <Card>
                 <div className="flex flex-col gap-4 mb-6">
                     <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-6">
-                            <div>
-                                <div className="text-slate-400 font-medium mb-1">
-                                    {songs.length} songs in library
-                                    {selectedSongIds.size > 0 && (
-                                        <span className="ml-4 text-emerald-400 font-semibold">
-                                            {selectedSongIds.size} selected
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="text-sm font-medium">
-                                    <span className="text-slate-500">Active Folder:</span>
-                                    <span className="text-slate-200 font-mono ml-2 px-2 py-0.5 bg-slate-800 rounded border border-slate-700">{activeFolder || '(default) none'}</span>
-                                </div>
+                        <div>
+                            <div className="text-slate-400 font-medium mb-1">
+                                {songs.length} songs in library
+                                {selectedSongIds.size > 0 && (
+                                    <span className="ml-4 text-emerald-400 font-semibold">
+                                        {selectedSongIds.size} selected
+                                    </span>
+                                )}
                             </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant={allSelected ? "secondary" : "primary"}
-                                    size="sm"
-                                    onClick={selectAllSongs}
-                                    disabled={songs.length === 0}
-                                >
-                                    Select All
-                                </Button>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={deselectAllSongs}
-                                    disabled={selectedSongIds.size === 0}
-                                >
-                                    Unselect All
-                                </Button>
+                            <div className="text-sm font-medium">
+                                <span className="text-slate-500">Active Folder:</span>
+                                <span className="text-slate-200 font-mono ml-2 px-2 py-0.5 bg-slate-800 rounded border border-slate-700">{activeFolder || '(default) none'}</span>
                             </div>
                         </div>
                     </div>
@@ -430,7 +410,19 @@ export const MediaControl: React.FC = () => {
                         <thead className="text-xs uppercase bg-slate-800 text-slate-400 sticky top-0 z-10 shadow-lg">
                             <tr>
                                 <th className="px-6 py-4">Track Information & Cue Controls</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
+                                <th className="px-6 py-4 text-right">
+                                    <button
+                                        onClick={allSelected ? deselectAllSongs : selectAllSongs}
+                                        disabled={songs.length === 0}
+                                        className={`text-xs font-bold px-4 py-2 rounded transition-all ${
+                                            allSelected
+                                                ? 'bg-red-500/30 text-red-300 hover:bg-red-500/40'
+                                                : 'bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/40'
+                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    >
+                                        {allSelected ? 'Unselect All' : 'Select All'}
+                                    </button>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50 bg-slate-800/20">
