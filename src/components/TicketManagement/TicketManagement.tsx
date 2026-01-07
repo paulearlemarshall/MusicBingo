@@ -41,7 +41,8 @@ export const TicketManagement: React.FC = () => {
     const [presetNameInput, setPresetNameInput] = useState('');
 
     const requiredSongs = gridSize * gridSize;
-    const safeMax = BingoGameLogic.calculateSafeMax(songs.length, gridSize);
+    const songsForGeneration = selectedSongIds.size > 0 ? selectedSongIds.size : songs.length;
+    const safeMax = BingoGameLogic.calculateSafeMax(songsForGeneration, gridSize);
 
     const handleGridSizeChange = (newSize: number) => {
         if (gridSize === newSize) return;
@@ -310,7 +311,7 @@ export const TicketManagement: React.FC = () => {
 
                     {!activePreset && selectedSongIds.size === 0 && (
                         <div className="text-sm text-slate-400 p-3 bg-slate-800/30 rounded">
-                            💡 Tip: Select songs in the Library Manager, generate tickets, then save as a preset.
+                            💡 Tip: Select songs in Media Control, generate tickets, then save as a preset.
                         </div>
                     )}
                 </div>
@@ -403,20 +404,25 @@ export const TicketManagement: React.FC = () => {
                                     />
                                     <div className="flex-1 min-w-[300px] px-4 py-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
                                         <p className="text-sm text-slate-300 leading-relaxed">
-                                            For <span className="text-pink-400 font-bold">{songs.length}</span> songs, max <span className="text-pink-400 font-bold">{safeMax.toLocaleString()}</span> unique tickets can be produced for a <span className="text-pink-400 font-bold">{gridSize}x{gridSize}</span> grid ({requiredSongs} songs/ticket).
+                                            For <span className="text-pink-400 font-bold">{songsForGeneration}</span> {selectedSongIds.size > 0 ? 'songs selected' : 'songs'} (from {songs.length} in library), max <span className="text-pink-400 font-bold">{safeMax.toLocaleString()}</span> unique tickets can be produced for a <span className="text-pink-400 font-bold">{gridSize}x{gridSize}</span> grid ({requiredSongs} songs/ticket).
                                         </p>
                                     </div>
-                                    <Button 
-                                        onClick={handleGenerate} 
-                                        variant="primary" 
-                                        disabled={songs.length < requiredSongs || tickets.size > 0} 
+                                    <Button
+                                        onClick={handleGenerate}
+                                        variant="primary"
+                                        disabled={songsForGeneration < requiredSongs || tickets.size > 0}
                                         className="ml-auto"
                                     >
                                         Generate
                                     </Button>
                                 </div>
-                                {songs.length < requiredSongs && (
-                                    <p className="text-sm text-amber-500 mt-2">Add at least {requiredSongs} songs to the library to generate tickets ({gridSize}x{gridSize} grid).</p>
+                                {songsForGeneration < requiredSongs && (
+                                    <p className="text-sm text-amber-500 mt-2">
+                                        {selectedSongIds.size > 0
+                                            ? `Select at least ${requiredSongs} songs in Media Control to generate tickets (${gridSize}x${gridSize} grid). Currently ${songsForGeneration} selected.`
+                                            : `Add at least ${requiredSongs} songs to the library to generate tickets (${gridSize}x${gridSize} grid).`
+                                        }
+                                    </p>
                                 )}
                                 {ticketCountToGen > safeMax && safeMax > 0 && (
                                     <p className="text-[10px] text-amber-500 mt-2 bg-amber-500/10 p-2 rounded">⚠️ You are requesting more tickets <b>({ticketCountToGen})</b> than there are unique combinations <b>({safeMax})</b>. Some duplicates will be generated.</p>
