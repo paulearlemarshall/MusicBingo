@@ -72,7 +72,7 @@ interface GameContextType extends GameState {
     // Preset management
     loadPresets: (folderPath: string) => Promise<void>;
     loadPreset: (presetName: string) => Promise<void>;
-    savePreset: (presetName: string) => Promise<boolean>;
+    savePreset: (presetName: string, overridePdfConfig?: PDFConfig) => Promise<boolean>;
     deletePreset: (presetName: string) => Promise<boolean>;
     setActivePreset: (name: string | null) => void;
     // Song selection for presets
@@ -559,7 +559,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, [activeFolder, loadTicketsFromBoards]);
 
-    const savePreset = useCallback(async (presetName: string): Promise<boolean> => {
+    const savePreset = useCallback(async (presetName: string, overridePdfConfig?: PDFConfig): Promise<boolean> => {
         if (!activeFolder || !presetName) {
             console.error("[GameContext] savePreset: Missing activeFolder or presetName");
             return false;
@@ -571,6 +571,9 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // Get selected songs for the catalog
             const catalog = songs.filter(s => selectedSongIds.has(s.id));
 
+            // Use override config if provided, otherwise use state
+            const configToSave = overridePdfConfig || pdfConfig;
+
             // @ts-ignore
             const success = await window.ipcRenderer.invoke('presets:save', {
                 folderPath: activeFolder,
@@ -578,7 +581,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 tickets: Array.from(tickets.values()),
                 catalog,
                 gridSize,
-                pdfConfig,
+                pdfConfig: configToSave,
                 selectedSongIds: Array.from(selectedSongIds)
             });
 

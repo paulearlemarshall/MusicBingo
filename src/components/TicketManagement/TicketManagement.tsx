@@ -193,17 +193,18 @@ export const TicketManagement: React.FC = () => {
             }
         }
 
-        // Update pdfConfig with current local state before saving
-        setPdfConfig({
+        // Create updated config with current local state
+        const updatedConfig = {
             headerText: header,
             footerText: footer,
             logoUrl: logo || undefined
-        });
+        };
 
-        // Small delay to ensure state updates propagate
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Update context state for consistency
+        setPdfConfig(updatedConfig);
 
-        const success = await savePreset(trimmedName);
+        // Save with the updated config directly (don't rely on state update timing)
+        const success = await savePreset(trimmedName, updatedConfig);
         if (success) {
             setShowSaveModal(false);
             alert(`Preset "${trimmedName}" saved successfully!`);
